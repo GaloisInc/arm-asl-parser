@@ -140,7 +140,7 @@ qualifier : qualifierToken   { let (TokenQualifier a) = ltToken $1 in a }
 
 qualId :: { QualifiedIdentifier }
 qualId : identifier               { QualifiedIdentifier Nothing $1   }
-                    | qualifier '.' identifier { QualifiedIdentifier (Just $1) $3 }
+       | qualifier '.' identifier { QualifiedIdentifier (Just $1) $3 }
 
 symDecl :: { (identifier, Type) }
 symDecl : type identifier         { ($2, $1) }
