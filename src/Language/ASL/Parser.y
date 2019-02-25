@@ -166,7 +166,6 @@ maskLit : maskLitToken                   { let TokenMask i = ltToken $1 in i }
 
 definitions :: { [Definition] }
 definitions : list0(definition)  { $1 }
-            ;
 
 definition :: { Definition }
 definition : typeDefinition                                                { $1 }
