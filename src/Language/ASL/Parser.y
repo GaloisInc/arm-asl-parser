@@ -141,7 +141,6 @@ qualifier : qualifierToken   { let (TokenQualifier a) = ltToken $1 in a }
 qualId :: { QualifiedIdentifier }
 qualId : identifier               { QualifiedIdentifier Nothing $1   }
                     | qualifier '.' identifier { QualifiedIdentifier (Just $1) $3 }
-                    ;
 
 symDecl :: { (identifier, Type) }
 symDecl : type identifier         { ($2, $1) }
@@ -176,7 +175,6 @@ definition : typeDefinition                                                { $1 
            | procedureDefinition                                           { $1 }
            | getterDefinition                                              { $1 }
            | setterDefinition                                              { $1 }
-           ;
 
 typeDefinition :: { Definition }
 typeDefinition : builtin 'type' identifier ';'                             { TypeDefinition (TypeDefBuiltin $3) }
@@ -184,23 +182,19 @@ typeDefinition : builtin 'type' identifier ';'                             { Typ
                | 'type' identifier '=' type ';'                            { TypeDefinition (TypeDefAlias $2 $4) }
                | 'type' identifier is '(' sep0(',', symDecl) ')'           { TypeDefinition (TypeDefStruct $2 $5) }
                | enumeration identifier '{' sep0(',', identifier) '}' ';'  { TypeDefinition (TypeDefEnum $2 $4) }
-               ;
 
 varConstDefinition :: { Definition }
 varConstDefinition : type qualId ';'                                       { VariableDefinition $2 $1 }
                    | constant type identifier '=' expr ';'                 { ConstDefinition $3 $2 $5 }
                    | array type identifier '[' ixType ']' ';'              { ArrayDefinition $3 $2 $5 }
-                   ;
 
 functionDefinition :: { Definition }
 functionDefinition : returnType qualId '(' sep0(',', symDecl) ')' ';'    { FunctionDefinition (CallableDef $2 $4 $1 []) }
                    | returnType qualId '(' sep0(',', symDecl) ')' block  { FunctionDefinition (CallableDef $2 $4 $1 $6) }
-                   ;
 
 procedureDefinition :: { Definition }
 procedureDefinition : qualId '(' sep0(',', symDecl) ')' ';'              { ProcedureDefinition (CallableDef $1 $3 [] []) }
                     | qualId '(' sep0(',', symDecl) ')' block            { ProcedureDefinition (CallableDef $1 $3 [] $5) }
-                    ;
 
 getterDefinition :: { Definition }
 getterDefinition : returnType qualId block ';'                          { GetterDefinition $2 [] $1 $3 }
