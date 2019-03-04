@@ -1,5 +1,6 @@
 module Language.ASL.Syntax where
 
+import Data.Text(Text)
 
 -- TODO: what is the real meaning of these Unknown bits?
 
@@ -18,34 +19,54 @@ data MaskBit = MaskBitSet | MaskBitUnset | MaskBitEither
     deriving(Show, Eq)
 
 type BitVector = [Bool]
+type Mask = [MaskBit]
+
+-- Instructions -----------------------------------------------------
+
+data Instruction =
+  Instruction { instName      :: Text
+              , instEncodings :: [Encoding]
+              , instExecute   :: [Stmt]
+              }
+
+
+data InstructionSet = A32 | T32
+
+data Encoding =
+  Encoding { encInstrSet      :: InstructionSet
+           , encFields        :: [InstructionField]
+           , encOpcodeMask    :: Mask
+           , encGuard         :: Expr
+           , encUnpredictable :: [(Int, Bool)]
+           , encDecode        :: [Stmt]
+           }
+
+data InstructionField =
+  InstructionField { instFieldName   :: Identifier
+                   , instFieldBegin  :: Int
+                   , instFieldOffset :: Int
+                   }
 
 -- Definitions ------------------------------------------------------
 
 data Definition =
-    TypeDefinition      TypeDefinition
-  | VariableDefinition  QualifiedIdentifier Type
-  | ConstDefinition     Identifier Type Expr
-  | ArrayDefinition     Identifier Type IndexType
-  | FunctionDefinition  CallableDef
-  | ProcedureDefinition CallableDef
-  | GetterDefinition    QualifiedIdentifier [SymbolDecl] [Type] [Stmt]
-  | SetterDefinition    QualifiedIdentifier [SetterArg] SymbolDecl [Stmt]
+    DefTypeBuiltin      Identifier
+  | DefTypeAbstract     Identifier
+  | DefTypeAlias        Identifier Type
+  | DefTypeStruct       Identifier [SymbolDecl]
+  | DefTypeEnum         Identifier [Identifier]
+  | DefVariable         QualifiedIdentifier Type
+  | DefConst            Identifier Type Expr
+  | DefArray            Identifier Type IndexType
+  | DefCallable         { callableName ::  QualifiedIdentifier
+                        , callableArgs ::  [SymbolDecl]
+                        , callableRets ::  [Type]
+                        , callableStmts :: [Stmt]
+                        }
+  | DefGetter           QualifiedIdentifier [SymbolDecl] [Type] [Stmt]
+  | DefSetter           QualifiedIdentifier [SetterArg] SymbolDecl [Stmt]
 
-data SetterArg = SetterArg SymbolDecl Bool  {- True if AMP - what does this mean? -}
-
-data TypeDefinition =
-    TypeDefBuiltin  Identifier
-  | TypeDefAbstract Identifier  -- abstract?
-  | TypeDefAlias    Identifier Type
-  | TypeDefStruct   Identifier [SymbolDecl]
-  | TypeDefEnum     Identifier [Identifier]
-
-data CallableDef = CallableDef { callableName ::  QualifiedIdentifier
-                               , callableArgs ::  [SymbolDecl]
-                               , callableRets ::  [Type]
-                               , callableStmts :: [Stmt]
-                               }
-
+data SetterArg = SetterArg SymbolDecl Bool
 
 -- Types ------------------------------------------------------------
 
@@ -65,20 +86,20 @@ data RegField = RegField Identifier [Slice]
 -- Statements -------------------------------------------------------
 
 data LValExpr =
-    LValDiscard                        {- UNKNOWN -}
-  | LValVarRef QualifiedIdentifier     {- UNKNOWN -}
-  | LValMember LValExpr Identifier     {- UNKNOWN -}
-  | LValDotIndex LValExpr [Identifier] {- UNKNOWN -}
-  | LValIndex LValExpr [Slice]         {- UNKNOWN -}
-  | LValArrayPattern [LValExpr]        {- UNKNOWN -}
-  | LValList [LValExpr]                {- UNKNOWN -}
+    LValIgnore
+  | LValVarRef QualifiedIdentifier
+  | LValMember LValExpr Identifier
+  | LValDotIndex LValExpr [Identifier]
+  | LValIndex LValExpr [Slice]
+  | LValArrayPattern [LValExpr]
+  | LValList [LValExpr]
 
 data Stmt =
-    StmtDecl Type [Identifier]          {- UNKNOWN -}
-  | StmtDeclInit  SymbolDecl Expr       {- UNKNOWN -}
-  | StmtDeclConst SymbolDecl Expr       {- UNKNOWN -}
-  | StmtAssign LValExpr Expr            {- UNKNOWN -}
-  | StmtCall QualifiedIdentifier [Expr] {- UNKNOWN -}
+    StmtDecl Type [Identifier]
+  | StmtDeclInit  SymbolDecl Expr
+  | StmtDeclConst SymbolDecl Expr
+  | StmtAssign LValExpr Expr
+  | StmtCall QualifiedIdentifier [Expr]
   | StmtReturn (Maybe Expr)
   | StmtAssert Expr
   | StmtUnpredictable
@@ -102,9 +123,9 @@ data CasePattern =
     CasePatternInt Integer
   | CasePatternHex Integer
   | CasePatternBin BitVector
-  | CasePatternMask [MaskBit]
+  | CasePatternMask Mask
   | CasePatternIdentifier Identifier
-  | CasePatternIgnore                    {- UNKNOWN - this corresponds to minus in a pattern -}
+  | CasePatternIgnore
   | CasePatternSeq [CasePattern]
 
 data CatchAlternative =
@@ -113,6 +134,41 @@ data CatchAlternative =
 
 -- Expressions ------------------------------------------------------
 
-data Expr = Expr
-data Slice = Slice
+data Expr =
+    ExprLitString Text
+  | ExprLitInt Integer
+  | ExprLitReal Rational
+  | ExprLitBin BitVector
+  | ExprLitMask Mask
+  | ExprVarRef Identifier
+  | ExprImpDef (Maybe Text)
+  | ExprSlice  [Slice]
+  | ExprConcat Expr Expr
+  | ExprIndex Expr [Slice]
+  | ExprUnOp UnOp Expr
+  | ExprBinOp BinOp Expr Expr
+  | ExprMembers Expr [Identifier]
+  | ExprInMask Expr Mask
+  | ExprMemberBits Expr [Identifier]
+  | ExprCall Expr [Expr]
+  | ExprInSet Expr Expr [SetElement]
+  | ExprUnknown
+  | ExprTuple [Expr]
+  | ExprIf[({- test -} Expr, {- result -} Expr)]  {- else -}Expr
+  | ExprMember Expr Identifier
+
+data SetElement =
+    SetEltSingle Expr
+  | SetEltRange Expr Expr
+
+data Slice =
+    SliceSingle Expr
+  | SliceOffset Expr Expr
+
+data UnOp =
+    UnOpNot
+  | UnOpNeg
+
+data BinOp =
+    BinOpAdd
 
