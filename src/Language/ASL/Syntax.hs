@@ -25,21 +25,20 @@ type Mask = [MaskBit]
 
 data Instruction =
   Instruction { instName      :: Text
-              , instEncodings :: [Encoding]
+              , instEncodings :: [InstructionEncoding]
               , instExecute   :: [Stmt]
               }
 
-
 data InstructionSet = A32 | T32
 
-data Encoding =
-  Encoding { encInstrSet      :: InstructionSet
-           , encFields        :: [InstructionField]
-           , encOpcodeMask    :: Mask
-           , encGuard         :: Expr
-           , encUnpredictable :: [(Int, Bool)]
-           , encDecode        :: [Stmt]
-           }
+data InstructionEncoding =
+  InstructionEncoding { encInstrSet      :: InstructionSet
+                      , encFields        :: [InstructionField]
+                      , encOpcodeMask    :: Mask
+                      , encGuard         :: Expr
+                      , encUnpredictable :: [(Int, Bool)]
+                      , encDecode        :: [Stmt]
+                      }
 
 data InstructionField =
   InstructionField { instFieldName   :: Identifier
@@ -154,7 +153,8 @@ data Expr =
   | ExprInSet Expr Expr [SetElement]
   | ExprUnknown
   | ExprTuple [Expr]
-  | ExprIf[({- test -} Expr, {- result -} Expr)]  {- else -}Expr
+  | ExprIf {- test, result -} [(Expr, Expr)]
+           {- else -}Expr
   | ExprMember Expr Identifier
 
 data SetElement =
@@ -170,5 +170,26 @@ data UnOp =
   | UnOpNeg
 
 data BinOp =
-    BinOpAdd
-
+    BinOpEQ
+  | BinOpNEQ
+  | BinOpGT
+  | BinOpGTEQ
+  | BinOpShiftRight
+  | BinOpLT
+  | BinOpLTEQ
+  | BinOpShiftLeft
+  | BinOpAdd
+  | BinOpSub
+  | BinOpMul
+  | BinOpFloatDiv -- this is the '/' operator?
+  | BinOpPow
+  | BinOpLogicalAnd
+  | BinOpLogicalOr
+  | BinOpBitwiseOr
+  | BinOpBitwiseAnd
+  | BinOpBitwiseXor
+  | BinOpPlusPlus   -- this is the '++' operator - doesn't appear in out.asl
+  | BinOpQuot
+  | BinOpRem
+  | BinOpDiv
+  | BinOpMod

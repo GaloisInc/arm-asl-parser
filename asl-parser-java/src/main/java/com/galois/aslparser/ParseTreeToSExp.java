@@ -3,9 +3,11 @@ package com.galois.aslparser;
 
 import com.galois.aslparser.gen.ASLBaseVisitor;
 import com.galois.aslparser.gen.ASLParser;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,8 +22,8 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return cs.stream().map(this::sub).collect(Collectors.toList());
     }
 
-    private SExp id(TerminalNode identifier) {
-        return atomq(identifier.getText());
+    private SExp id(ParseTree identifier) {
+        return atom(identifier.getText());
     }
 
     private SExp list(List<SExp> pt) {
@@ -30,6 +32,10 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     private SExp nat(TerminalNode term) {
         return atom(term.getText());
+    }
+
+    private SExp nat(Token begin) {
+        return atom(begin.getText());
     }
 
     private SExp maybe(ParseTree p) {
@@ -86,32 +92,32 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitIdentifierCommaList0(ASLParser.IdentifierCommaList0Context ctx) {
-        return list(ctx.IDENTIFIER().stream().map(this::id).collect(Collectors.toList()));
+        return list(ctx.id().stream().map(this::id).collect(Collectors.toList()));
     }
 
     @Override
     public SExp visitIdentifierCommaList1(ASLParser.IdentifierCommaList1Context ctx) {
-        return list(ctx.IDENTIFIER().stream().map(this::id).collect(Collectors.toList()));
+        return list(ctx.id().stream().map(this::id).collect(Collectors.toList()));
     }
 
     @Override
     public SExp visitSymDecl(ASLParser.SymDeclContext ctx) {
-        return sexp("SymDecl", id(ctx.IDENTIFIER()), sub(ctx.type()));
+        return sexp("SymDecl", id(ctx.id()), sub(ctx.type()));
     }
 
     @Override
     public SExp visitQualIdUnqualified(ASLParser.QualIdUnqualifiedContext ctx) {
-        return sexp("QualifiedIdentifier", atom("Any"), id(ctx.IDENTIFIER()));
+        return sexp("QualifiedIdentifier", atom("Any"), id(ctx.id()));
     }
 
     @Override
     public SExp visitQualIdAArch32(ASLParser.QualIdAArch32Context ctx) {
-        return sexp("QualifiedIdentifier", atom("AArch32"), id(ctx.IDENTIFIER()));
+        return sexp("QualifiedIdentifier", atom("AArch32"), id(ctx.id()));
     }
 
     @Override
     public SExp visitQualIdAArch64(ASLParser.QualIdAArch64Context ctx) {
-        return sexp("QualifiedIdentifier", atom("AArch64"), id(ctx.IDENTIFIER()));
+        return sexp("QualifiedIdentifier", atom("AArch64"), id(ctx.id()));
     }
 
     @Override
@@ -119,19 +125,57 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("AslDefinitions", subs(ctx.definition()));
     }
 
+// -- INSTRUCTIONS --------------------------------------------------
+
+    @Override
+    public SExp visitInstruction(ASLParser.InstructionContext ctx) {
+        return sexp("Instruction",
+                    id(ctx.id()),
+                    list(subs(ctx.encoding())),
+                    sub(ctx.indentedBlock()));
+    }
+
+    @Override
+    public SExp visitEncoding(ASLParser.EncodingContext ctx) {
+        return sexp("InstructionEncoding",
+                    id(ctx.id()),
+                    atom(ctx.instructionSet.getText()),
+                    list(subs(ctx.instructionField())),
+                    atom(ctx.opcode.getText()),
+                    maybe(ctx.expr()),
+                    list(subs(ctx.instrUnpredictableUnless())),
+                    maybe(ctx.decode));
+    }
+
+    private SExp emptyList() {
+        return list(Collections.emptyList());
+    }
+
+    @Override
+    public SExp visitInstructionField(ASLParser.InstructionFieldContext ctx) {
+        return sexp("InstructionField", id(ctx.id()), nat(ctx.begin), nat(ctx.len));
+    }
+
+    @Override
+    public SExp visitInstrUnpredictableUnless(ASLParser.InstrUnpredictableUnlessContext ctx) {
+        return sexp("InstructionUnpredictableUnless", nat(ctx.idx), bin(ctx.BIN_LIT()));
+    }
+
+// -- DEFINITIONS ---------------------------------------------------
+
     @Override
     public SExp visitDefTypeBuiltin(ASLParser.DefTypeBuiltinContext ctx) {
-        return sexp("DefTypeBuiltin", id(ctx.IDENTIFIER()));
+        return sexp("DefTypeBuiltin", id(ctx.id()));
     }
 
     @Override
     public SExp visitDefTypeAbstract(ASLParser.DefTypeAbstractContext ctx) {
-        return sexp("DefTypeAbstract", id(ctx.IDENTIFIER()));
+        return sexp("DefTypeAbstract", id(ctx.id()));
     }
 
     @Override
     public SExp visitDefTypeAlias(ASLParser.DefTypeAliasContext ctx) {
-        return sexp("DefTypeAlias", id(ctx.IDENTIFIER()), sub(ctx.type()));
+        return sexp("DefTypeAlias", id(ctx.id()), sub(ctx.type()));
     }
 
     @Override
@@ -141,7 +185,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitDefTypeEnum(ASLParser.DefTypeEnumContext ctx) {
-        return sexp("DefTypeEnum", id(ctx.IDENTIFIER()), sub(ctx.identifierCommaList0()));
+        return sexp("DefTypeEnum", id(ctx.id()), sub(ctx.identifierCommaList0()));
     }
 
     @Override
@@ -151,12 +195,12 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitDefConstant(ASLParser.DefConstantContext ctx) {
-        return sexp("ConstantDefinition", id(ctx.IDENTIFIER()), sub(ctx.type()), sub(ctx.expr()));
+        return sexp("ConstantDefinition", id(ctx.id()), sub(ctx.type()), sub(ctx.expr()));
     }
 
     @Override
     public SExp visitDefArray(ASLParser.DefArrayContext ctx) {
-        return sexp("ArrayDefinition", id(ctx.IDENTIFIER()), sub(ctx.type()), sub(ctx.ixType()));
+        return sexp("ArrayDefinition", id(ctx.id()), sub(ctx.type()), sub(ctx.ixType()));
     }
 
     @Override
@@ -203,7 +247,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitTypeIndexed(ASLParser.TypeIndexedContext ctx) {
-        return sexp("TypeFun", id(ctx.IDENTIFIER()), sub(ctx.expr()));
+        return sexp("TypeFun", id(ctx.id()), sub(ctx.expr()));
     }
 
     @Override
@@ -223,7 +267,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitIxTypeIdentifier(ASLParser.IxTypeIdentifierContext ctx) {
-        return sexp("IxTypeIdentifier", id(ctx.IDENTIFIER()));
+        return sexp("IxTypeIdentifier", id(ctx.id()));
     }
 
     @Override
@@ -233,7 +277,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitRegField(ASLParser.RegFieldContext ctx) {
-        return sexp("RegField", id(ctx.IDENTIFIER()), list(subs(ctx.slice())));
+        return sexp("RegField", id(ctx.id()), list(subs(ctx.slice())));
     }
 
     @Override
@@ -300,7 +344,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     @Override
     public SExp visitStmtFor(ASLParser.StmtForContext ctx) {
         return sexp("StmtFor",
-                id(ctx.IDENTIFIER()),
+                id(ctx.id()),
                 sub(ctx.begin),
                 atom(ctx.direction.getText()),
                 sub(ctx.end),
@@ -324,7 +368,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     @Override
     public SExp visitStmtThrow(ASLParser.StmtThrowContext ctx) {
         return sexp("StmtThrow",
-                id(ctx.IDENTIFIER()));
+                id(ctx.id()));
     }
 
     @Override
@@ -333,19 +377,29 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitStmtSeeExpr(ASLParser.StmtSeeExprContext ctx) {
-        return sexp("StmtSeeExpr", sub(ctx.expr()));
+    public SExp visitStmtSee(ASLParser.StmtSeeContext ctx) {
+        return sexp("StmtSee", atomq(ctx.SEE_TOK().getText()));
     }
 
     @Override
-    public SExp visitStmtSeeStrLit(ASLParser.StmtSeeStrLitContext ctx) {
-        return sexp("StmtSeeStrLit", stringLit(ctx.STRING_LIT()));
+    public SExp visitInstructions(ASLParser.InstructionsContext ctx) {
+        return sexp("Instructions", subs(ctx.instruction()));
+    }
+
+    @Override
+    public SExp visitStmtDefEnum(ASLParser.StmtDefEnumContext ctx) {
+        return sexp("StmtDefEnum", id(ctx.id()), sub(ctx.identifierCommaList0()));
+    }
+
+    @Override
+    public SExp visitId(ASLParser.IdContext ctx) {
+        return atom(ctx.getText());
     }
 
     @Override
     public SExp visitStmtTry(ASLParser.StmtTryContext ctx) {
         return sexp("StmtTry",
-                sub(ctx.IDENTIFIER()),
+                sub(ctx.id()),
                 sub(ctx.indentedBlock()),
                 list(subs(ctx.catchAlt())));
     }
@@ -392,7 +446,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitCasePatternBind(ASLParser.CasePatternBindContext ctx) {
-        return sexp("CasePatternIdentifier", id(ctx.IDENTIFIER()));
+        return sexp("CasePatternIdentifier", id(ctx.id()));
     }
 
     @Override
@@ -432,7 +486,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitLValMember(ASLParser.LValMemberContext ctx) {
-        return sexp("LValMember", sub(ctx.lValExpr()), id(ctx.IDENTIFIER()));
+        return sexp("LValMember", sub(ctx.lValExpr()), id(ctx.id()));
     }
 
     @Override
@@ -478,23 +532,18 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitExprConcat(ASLParser.ExprConcatContext ctx) {
-        return sexp("ExprConcat", sub(ctx.operand1), sub(ctx.operand2));
-    }
-
-    @Override
     public SExp visitExprIndex(ASLParser.ExprIndexContext ctx) {
         return sexp("ExprIndex", sub(ctx.expr()), sub(ctx.sliceCommaList0()));
     }
 
     @Override
     public SExp visitExprUnOp(ASLParser.ExprUnOpContext ctx) {
-        return sexp("ExprUnOp", atom(ctx.operator.getText()), sub(ctx.expr()));
+        return sexp("ExprUnOp", atomq(ctx.operator.getText()), sub(ctx.expr()));
     }
 
     @Override
     public SExp visitExprBinOp(ASLParser.ExprBinOpContext ctx) {
-        return sexp("ExprBinOp", atom(ctx.operator.getText()), sub(ctx.operand1), sub(ctx.operand2));
+        return sexp("ExprBinOp", atomq(ctx.operator.getText()), sub(ctx.operand1), sub(ctx.operand2));
     }
 
     @Override
@@ -575,7 +624,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitExprMember(ASLParser.ExprMemberContext ctx) {
-        return sexp("ExprMember", sub(ctx.expr()), id(ctx.IDENTIFIER()));
+        return sexp("ExprMember", sub(ctx.expr()), id(ctx.id()));
     }
 
 

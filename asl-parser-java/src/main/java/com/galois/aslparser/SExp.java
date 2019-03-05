@@ -22,7 +22,7 @@ public class SExp {
     private SExp(String name, boolean atom) {
         label = name;
         exps = Collections.emptyList();
-        atom = true;
+        this.atom = atom;
     }
 
     public String getLabel() {

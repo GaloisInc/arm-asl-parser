@@ -2,20 +2,39 @@ grammar ASL;
 
 tokens { INDENT, DEDENT }
 
+// -- INSTRUCTIONS --------------------------------------------------
+
+instructions: instruction* EOF ;
+
+instruction: '__instruction' id INDENT encoding+ '__execute' indentedBlock DEDENT ;
+
+encoding:
+    '__encoding' id
+    INDENT
+        '__instruction_set' instructionSet=('A32'|'T32'|'T16')
+        instructionField*
+        '__opcode' opcode=(MASK_LIT|BIN_LIT)
+        '__guard' expr
+        instrUnpredictableUnless*
+        '__decode' (decode=indentedBlock)?
+    DEDENT;
+
+instructionField: '__field' id begin=NAT_LIT '+:' len=NAT_LIT ;
+instrUnpredictableUnless: '__unpredictable_unless' idx=NAT_LIT '==' bin=BIN_LIT ;
 
 // -- DEFINITIONS ---------------------------------------------------
 
 definitions : definition* EOF ;
 
 definition:
-      '__builtin' 'type' IDENTIFIER ';'                                  #DefTypeBuiltin
-    | 'type' IDENTIFIER ';'                                              #DefTypeAbstract
-    | 'type' IDENTIFIER '=' type ';'                                     #DefTypeAlias
+      '__builtin' 'type' id ';'                                          #DefTypeBuiltin
+    | 'type' id ';'                                                      #DefTypeAbstract
+    | 'type' id '=' type ';'                                             #DefTypeAlias
     | 'type' qualId     'is' '(' symDeclCommaList ')'                    #DefTypeStruct
-    | 'enumeration' IDENTIFIER '{' identifierCommaList0 '}' ';'          #DefTypeEnum
+    | 'enumeration' id '{' identifierCommaList0 '}' ';'                  #DefTypeEnum
     | type qualId ';'                                                    #DefVariable
-    | 'constant' type IDENTIFIER '=' expr ';'                            #DefConstant
-    | 'array' type IDENTIFIER '[' ixType ']' ';'                         #DefArray
+    | 'constant' type id '=' expr ';'                                    #DefConstant
+    | 'array' type id '[' ixType ']' ';'                                 #DefArray
     | returnType? qualId '(' symDeclCommaList ')' (indentedBlock | ';')  #DefCallable
     | returnType qualId indentedBlock                                    #DefGetter
     | returnType qualId '[' symDeclCommaList ']'  (indentedBlock | ';')  #DefGetter
@@ -25,8 +44,8 @@ definition:
 
 
 setterArg:
-      type '&' IDENTIFIER                                                #SetterRefArg
-    | type IDENTIFIER                                                    #SetterValArg
+      type '&' id                                                #SetterRefArg
+    | type id                                                    #SetterValArg
     ;
 
 // -- TYPES ---------------------------------------------------------
@@ -39,18 +58,18 @@ returnType:
 type:
       //IDENTIFIER
       qualId                                              #TypeRef   // is this really the case sometimes?  see out.asl:9657
-    | IDENTIFIER '(' expr ')'                             #TypeIndexed
+    | id '(' expr ')'                                     #TypeIndexed
     | 'typeof' '(' expr ')'                               #TypeOf
     | 'register' NAT_LIT '{' regField (',' regField)* '}' #TypeRegister
     | 'array' '[' ixType ']' 'of' type                    #TypeArray
     ;
 
 ixType:
-      IDENTIFIER                                          #IxTypeIdentifier
+      id                                                  #IxTypeIdentifier
     | begin=expr '..' end=expr                            #IxTypeRange
     ;
 
-regField: slice (',' slice)* IDENTIFIER ;
+regField: slice (',' slice)* id ;
 
 
 // -- STATEMENTS ----------------------------------------------------
@@ -81,17 +100,17 @@ stmt:
       (stmtElsIf)*
       ('else' elseExpr=blockOrEmbed1)?                    #StmtIf
     | 'case' expr 'of' INDENT caseAlt+ DEDENT             #StmtCase
-    | 'for' IDENTIFIER '='
+    | 'for' id '='
         begin=expr direction=('to'|'downto') end=expr
         indentedBlock                                     #StmtFor
     | 'while' expr 'do' indentedBlock                     #StmtWhile
     | 'repeat' indentedBlock 'until' expr ';'             #StmtRepeat
-    | 'throw' IDENTIFIER ';'                              #StmtThrow
+    | 'throw' id ';'                                      #StmtThrow
     | 'UNDEFINED' ';'                                     #StmtUndefined
-    | 'SEE' '(' expr ')' ';'                              #StmtSeeExpr
-    | 'SEE' STRING_LIT ';'                                #StmtSeeStrLit
+    | SEE_TOK ';'                                         #StmtSee
     | 'try' indentedBlock
-      'catch' IDENTIFIER INDENT catchAlt+ DEDENT          #StmtTry
+      'catch' id INDENT catchAlt+ DEDENT                  #StmtTry
+    | 'enumeration' id '{' identifierCommaList0 '}' ';'   #StmtDefEnum
     ;
 
 stmtElsIf:'elsif' expr 'then' blockOrEmbed1 ;
@@ -112,7 +131,7 @@ casePattern:
     | HEX_LIT                                             #CasePatternHex
     | BIN_LIT                                             #CasePatternBin
     | MASK_LIT                                            #CasePatternMask
-    | IDENTIFIER                                          #CasePatternBind
+    | id                                          #CasePatternBind
     | '-'                                                 #CasePatternIgnore
     | '(' casePattern (',' casePattern)* ')'              #CasePatternTuple
     ;
@@ -120,7 +139,7 @@ casePattern:
 
 lValExpr:
       '-'                                                 #LValIgnore
-    | lValExpr '.' IDENTIFIER                             #LValMember
+    | lValExpr '.' id                             #LValMember
     | lValExpr '.' '[' identifierCommaList1 ']'           #LValMemberArray
     | lValExpr '[' (slice (',' slice)*)? ']'              #LValArrayIndex
     | '[' lValExpr (',' lValExpr)* ']'                    #LValArray
@@ -148,17 +167,17 @@ expr:
     | operator=('-' | '!') expr                           #ExprUnOp
     | type 'UNKNOWN'                                      #ExprUnknown
     | type 'IMPLEMENTATION_DEFINED' STRING_LIT?           #ExprImpDef
-    | expr '.' IDENTIFIER                                 #ExprMember
+    | expr '.' id                                 #ExprMember
     | expr '.' '[' identifierCommaList1 ']'               #ExprMembers
     | expr '[' sliceCommaList0 ']'                        #ExprIndex
     | expr 'IN' set                                       #ExprInSet
     | expr 'IN' MASK_LIT                                  #ExprInMask
-    | operand1=expr
-      operator=( '==' | '!=' | '>'  | '>=' | '>>' | '<'  | '<=' | '<<'
-                 | '+'  | '-'  | '*'  | '/'  | '^'  | '&&' | '||' | 'OR'
-                 | 'EOR' | 'AND' | '++' | 'QUOT' | 'REM' | 'DIV' | 'MOD')
-      operand2=expr                                       #ExprBinOp
-    | operand1=expr ':' operand2=expr                     #ExprConcat
+    | operand1=expr operator='^' operand1=expr            #ExprBinOp
+    | operand1=expr operator=('*' | '/') operand2=expr    #ExprBinOp
+    | operand1=expr operator=('+' | '-') operand2=expr    #ExprBinOp
+    | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++' | ':') operand2=expr  #ExprBinOp
+    | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr                #ExprBinOp
+    | operand1=expr operator=( '&&' | '||' )  operand2=expr   #ExprBinOp
     | expr '<' sliceCommaList1 '>'                        #ExprSlice
     | expr '.' '<' identifierCommaList1 '>'               #ExprMemberBits //?
     | 'if' test=expr 'then' thenExpr=expr
@@ -166,6 +185,7 @@ expr:
       'else' elseExpr=expr                                #ExprIf
 
     ;
+
 
 exprElsIf: 'elsif' test=expr 'then' result=expr ;
 
@@ -188,17 +208,23 @@ exprCommaList0: (expr (',' expr)*)? ;
 
 // -- BASIC STUFF ---------------------------------------------------
 
-symDecl: type IDENTIFIER ;
-identifierCommaList0: (IDENTIFIER (',' IDENTIFIER)*)? ;
-identifierCommaList1: IDENTIFIER (',' IDENTIFIER)* ;
+symDecl: type id ;
+identifierCommaList0: (id (',' id)*)? ;
+identifierCommaList1: id (',' id)* ;
 symDeclCommaList: (symDecl (',' symDecl)*)? ;
 
 qualId:
-      IDENTIFIER                         #QualIdUnqualified
-    | 'AArch32' '.' IDENTIFIER           #QualIdAArch32
-    | 'AArch64' '.' IDENTIFIER           #QualIdAArch64
+      id                         #QualIdUnqualified
+    | 'AArch32' '.' id           #QualIdAArch32
+    | 'AArch64' '.' id           #QualIdAArch64
     ;
 
+id: IDENTIFIER | 'register' | 'enumeration';
+
+INDENT: 'IND' ;
+DEDENT: 'DED' ;
+
+SEE_TOK : 'SEE' ~';'+ ;
 IDENTIFIER : [A-Za-z_][A-Za-z0-9_]* ;
 NAT_LIT    : [0-9]+ ;
 HEX_LIT    : '0x' [0-9a-fA-F]+ ;
@@ -206,6 +232,8 @@ BIN_LIT    : '\'' [01 ]* '\'' ;
 MASK_LIT   : '\'' [01x ]* '\'' ;
 REAL_LIT   : [0-9]+ '.' [0-9]+ ;
 STRING_LIT : '"' ~'"'* '"' ;
+
+
 
 COMMENT : '/*' (COMMENT|.)*? '*/' -> skip ;
 LINE_COMMENT : '//' .*? '\n'      -> skip ;

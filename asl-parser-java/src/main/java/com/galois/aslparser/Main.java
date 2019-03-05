@@ -10,11 +10,11 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) {
-        String target = "/home/jlamar/prj/src/brittle/asl-conversion/gen/out.asl";
-        // String target = "/home/jlamar/prj/src/brittle/asl-conversion/gen/out_instrs.asl";
+        //String target = "/home/jlamar/prj/src/brittle/asl-conversion/gen/out.asl";
+        String target = "/home/jlamar/prj/src/brittle/asl-conversion/gen/out_instrs.asl";
 
         try {
-            ASLParser.DefinitionsContext defs = fromFilename(target).definitions();
+            ASLParser.InstructionsContext defs = fromFilename(target).instructions();
             SExp sexp = new ParseTreeToSExp().visit(defs);
 
             sexp.pretty(System.out::print);
