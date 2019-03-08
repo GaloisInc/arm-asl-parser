@@ -6,14 +6,15 @@ import Data.Text(Text)
 
 -- Infrastructure ---------------------------------------------------
 
-type Identifier = String
+type Identifier = Text
 
-data QualifiedIdentifier = QualifiedIdentifier (Maybe ArchName) Identifier
+data QualifiedIdentifier = QualifiedIdentifier ArchQualifier Identifier
+
+data ArchQualifier = ArchQualAArch32
+                   | ArchQualAArch64
+                   | ArchQualAny
 
 type SymbolDecl = (Identifier, Type)
-
-data ArchName = AArch32 | AArch64
-    deriving(Show, Eq)
 
 data MaskBit = MaskBitSet | MaskBitUnset | MaskBitEither
     deriving(Show, Eq)
@@ -52,7 +53,7 @@ data Definition =
     DefTypeBuiltin      Identifier
   | DefTypeAbstract     Identifier
   | DefTypeAlias        Identifier Type
-  | DefTypeStruct       Identifier [SymbolDecl]
+  | DefTypeStruct       QualifiedIdentifier [SymbolDecl]
   | DefTypeEnum         Identifier [Identifier]
   | DefVariable         QualifiedIdentifier Type
   | DefConst            Identifier Type Expr
@@ -70,7 +71,7 @@ data SetterArg = SetterArg SymbolDecl Bool
 -- Types ------------------------------------------------------------
 
 data Type =
-    TypeRef   Identifier
+    TypeRef   QualifiedIdentifier
   | TypeFun   Identifier Expr
   | TypeOf    Expr
   | TypeReg   Integer [RegField]
@@ -181,7 +182,7 @@ data BinOp =
   | BinOpAdd
   | BinOpSub
   | BinOpMul
-  | BinOpFloatDiv -- this is the '/' operator?
+  | BinOpDivide -- this is the '/' operator?
   | BinOpPow
   | BinOpLogicalAnd
   | BinOpLogicalOr

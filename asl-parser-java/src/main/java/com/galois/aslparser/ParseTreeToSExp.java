@@ -76,6 +76,11 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
+    public SExp visitExprParen(ASLParser.ExprParenContext ctx) {
+        return sub(ctx.expr());
+    }
+
+    @Override
     public SExp visitBlockOrEmbed1(ASLParser.BlockOrEmbed1Context ctx) {
         return sexp("StmtBlock", list(subs(ctx.stmt())));
     }
@@ -190,22 +195,22 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitDefVariable(ASLParser.DefVariableContext ctx) {
-        return sexp("VariableDefinition", sub(ctx.qualId()), sub(ctx.type()));
+        return sexp("DefVariable", sub(ctx.qualId()), sub(ctx.type()));
     }
 
     @Override
     public SExp visitDefConstant(ASLParser.DefConstantContext ctx) {
-        return sexp("ConstantDefinition", id(ctx.id()), sub(ctx.type()), sub(ctx.expr()));
+        return sexp("DefConst", id(ctx.id()), sub(ctx.type()), sub(ctx.expr()));
     }
 
     @Override
     public SExp visitDefArray(ASLParser.DefArrayContext ctx) {
-        return sexp("ArrayDefinition", id(ctx.id()), sub(ctx.type()), sub(ctx.ixType()));
+        return sexp("DefArray", id(ctx.id()), sub(ctx.type()), sub(ctx.ixType()));
     }
 
     @Override
     public SExp visitDefCallable(ASLParser.DefCallableContext ctx) {
-        return sexp("CallableDefinition",
+        return sexp("DefCallable",
                 sub(ctx.qualId()),
                 sub(ctx.symDeclCommaList()),
                 maybe(ctx.returnType()),
@@ -214,7 +219,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitDefGetter(ASLParser.DefGetterContext ctx) {
-        return sexp("GetterDefinition",
+        return sexp("DefGetter",
                 sub(ctx.qualId()),
                 maybe(ctx.symDeclCommaList()),
                 sub(ctx.returnType()),
@@ -223,7 +228,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitDefSetter(ASLParser.DefSetterContext ctx) {
-        return sexp("SetterDefinition",
+        return sexp("DefSetter",
                 sub(ctx.qualId()),
                 list(subs(ctx.setterArg())),
                 sub(ctx.symDecl()),
@@ -627,10 +632,54 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("ExprMember", sub(ctx.expr()), id(ctx.id()));
     }
 
+    @Override
+    public SExp visitSliceExprLitNat(ASLParser.SliceExprLitNatContext ctx) {
+        return sexp("ExprLitNat", nat(ctx.NAT_LIT()));
+    }
+
+    @Override
+    public SExp visitSliceExprLitHex(ASLParser.SliceExprLitHexContext ctx) {
+        return sexp("ExprLitHex", hex(ctx.HEX_LIT()));
+    }
+
+    @Override
+    public SExp visitSliceExprVarRef(ASLParser.SliceExprVarRefContext ctx) {
+        return sexp("ExprVarRef", sub(ctx.qualId()));
+    }
+
+    @Override
+    public SExp visitSliceExprCall(ASLParser.SliceExprCallContext ctx) {
+        return sexp("ExprCall", sub(ctx.qualId()), sub(ctx.exprCommaList0()));
+    }
+
+    @Override
+    public SExp visitSliceExprUnOp(ASLParser.SliceExprUnOpContext ctx) {
+        return sexp("ExprUnOp", atomq(ctx.operator.getText()), sub(ctx.expr()));
+    }
+
+    @Override
+    public SExp visitSliceExprMember(ASLParser.SliceExprMemberContext ctx) {
+        return sexp("ExprMember", sub(ctx.expr()), id(ctx.id()));
+    }
+
+    @Override
+    public SExp visitSliceExprBinOp(ASLParser.SliceExprBinOpContext ctx) {
+        return sexp("ExprBinOp", atomq(ctx.operator.getText()), sub(ctx.operand1), sub(ctx.operand2));
+    }
+
+    @Override
+    public SExp visitSliceExprIf(ASLParser.SliceExprIfContext ctx) {
+        return sexp("ExprIf", sub(ctx.test), sub(ctx.thenExpr), list(subs(ctx.exprElsIf())), sub(ctx.elseExpr));
+    }
 
     @Override
     public SExp visitSliceOffset(ASLParser.SliceOffsetContext ctx) {
         return sexp("SliceOffset", sub(ctx.base), sub(ctx.count));
+    }
+
+    @Override
+    public SExp visitSliceRange(ASLParser.SliceRangeContext ctx) {
+        return sexp("SliceRange", sub(ctx.begin), sub(ctx.end));
     }
 
     @Override

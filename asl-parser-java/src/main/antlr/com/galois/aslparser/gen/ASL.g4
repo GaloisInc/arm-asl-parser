@@ -44,8 +44,8 @@ definition:
 
 
 setterArg:
-      type '&' id                                                #SetterRefArg
-    | type id                                                    #SetterValArg
+      type '&' id                                                        #SetterRefArg
+    | type id                                                            #SetterValArg
     ;
 
 // -- TYPES ---------------------------------------------------------
@@ -131,7 +131,7 @@ casePattern:
     | HEX_LIT                                             #CasePatternHex
     | BIN_LIT                                             #CasePatternBin
     | MASK_LIT                                            #CasePatternMask
-    | id                                          #CasePatternBind
+    | id                                                  #CasePatternBind
     | '-'                                                 #CasePatternIgnore
     | '(' casePattern (',' casePattern)* ')'              #CasePatternTuple
     ;
@@ -139,7 +139,7 @@ casePattern:
 
 lValExpr:
       '-'                                                 #LValIgnore
-    | lValExpr '.' id                             #LValMember
+    | lValExpr '.' id                                     #LValMember
     | lValExpr '.' '[' identifierCommaList1 ']'           #LValMemberArray
     | lValExpr '[' (slice (',' slice)*)? ']'              #LValArrayIndex
     | '[' lValExpr (',' lValExpr)* ']'                    #LValArray
@@ -150,9 +150,7 @@ lValExpr:
     | qualId                                              #LValVarRef
     ;
 
-
 // -- EXPRESSIONS ---------------------------------------------------
-
 
 expr:
       NAT_LIT                                             #ExprLitNat
@@ -163,23 +161,24 @@ expr:
     | STRING_LIT                                          #ExprLitString
     | qualId                                              #ExprVarRef
     | qualId '(' exprCommaList0 ')'                       #ExprCall
+    | '(' expr ')'                                        #ExprParen
     | '(' exprCommaList1 ')'                              #ExprTuple
     | operator=('-' | '!') expr                           #ExprUnOp
     | type 'UNKNOWN'                                      #ExprUnknown
     | type 'IMPLEMENTATION_DEFINED' STRING_LIT?           #ExprImpDef
-    | expr '.' id                                 #ExprMember
+    | expr '.' id                                         #ExprMember
     | expr '.' '[' identifierCommaList1 ']'               #ExprMembers
     | expr '[' sliceCommaList0 ']'                        #ExprIndex
     | expr 'IN' set                                       #ExprInSet
     | expr 'IN' MASK_LIT                                  #ExprInMask
-    | operand1=expr operator='^' operand1=expr            #ExprBinOp
+    | operand1=expr operator='^' operand2=expr            #ExprBinOp
     | operand1=expr operator=('*' | '/') operand2=expr    #ExprBinOp
     | operand1=expr operator=('+' | '-') operand2=expr    #ExprBinOp
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++' | ':') operand2=expr  #ExprBinOp
     | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr                #ExprBinOp
     | operand1=expr operator=( '&&' | '||' )  operand2=expr   #ExprBinOp
     | expr '<' sliceCommaList1 '>'                        #ExprSlice
-    | expr '.' '<' identifierCommaList1 '>'               #ExprMemberBits //?
+    | expr '.' '<' identifierCommaList1 '>'               #ExprMemberBits
     | 'if' test=expr 'then' thenExpr=expr
       exprElsIf*
       'else' elseExpr=expr                                #ExprIf
@@ -187,12 +186,34 @@ expr:
     ;
 
 
-exprElsIf: 'elsif' test=expr 'then' result=expr ;
+// this is a kind of a hack to keep SliceRange from being parsed as a concat
+// which is necessary to preserve precedence rules - in this case we
+// have a version of expr that could in principle return an integer
+sliceExpr:
+      NAT_LIT                                             #SliceExprLitNat
+    | HEX_LIT                                             #SliceExprLitHex
+    | qualId                                              #SliceExprVarRef
+    | qualId '(' exprCommaList0 ')'                       #SliceExprCall
+    | operator=('-' | '!') expr                           #SliceExprUnOp
+    | expr '.' id                                         #SliceExprMember
+    | operand1=expr operator='^' operand2=expr            #SliceExprBinOp
+    | operand1=expr operator=('*' | '/') operand2=expr    #SliceExprBinOp
+    | operand1=expr operator=('+' | '-') operand2=expr    #SliceExprBinOp
+    | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++') operand2=expr  #SliceExprBinOp
+        | 'if' test=expr 'then' thenExpr=expr
+          exprElsIf*
+          'else' elseExpr=expr                                #SliceExprIf
+    ;
 
 slice:
-      base=expr '+:' count=expr                           #SliceOffset
+      begin=sliceExpr ':' end=sliceExpr                   #SliceRange
+    | base=sliceExpr '+:' count=sliceExpr                 #SliceOffset
     | expr                                                #SliceSingle
     ;
+
+
+exprElsIf: 'elsif' test=expr 'then' result=expr ;
+
 
 setElement: begin=expr '..' end=expr                      #SetElementRange
           | expr                                          #SetElementSingle
