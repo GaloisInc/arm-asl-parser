@@ -65,7 +65,7 @@ type:
     ;
 
 ixType:
-      id                                                  #IxTypeIdentifier
+      id                                                  #IxTypeRef
     | begin=expr '..' end=expr                            #IxTypeRange
     ;
 
@@ -175,7 +175,7 @@ expr:
     | operand1=expr operator=('*' | '/') operand2=expr    #ExprBinOp
     | operand1=expr operator=('+' | '-') operand2=expr    #ExprBinOp
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++' | ':') operand2=expr  #ExprBinOp
-    | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr                #ExprBinOp
+    | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr #ExprBinOp
     | operand1=expr operator=( '&&' | '||' )  operand2=expr   #ExprBinOp
     | expr '<' sliceCommaList1 '>'                        #ExprSlice
     | expr '.' '<' identifierCommaList1 '>'               #ExprMemberBits

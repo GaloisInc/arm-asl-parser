@@ -89,22 +89,25 @@ data LValExpr =
     LValIgnore
   | LValVarRef QualifiedIdentifier
   | LValMember LValExpr Identifier
-  | LValDotIndex LValExpr [Identifier]
-  | LValIndex LValExpr [Slice]
-  | LValArrayPattern [LValExpr]
-  | LValList [LValExpr]
+  | LValMemberArray LValExpr [Identifier]
+  | LValArrayIndex LValExpr [Slice]
+  | LValSliceOf LValExpr [Slice]
+  | LValArray [LValExpr]
+  | LValTuple [LValExpr]
+  | LValMemberBits LValExpr [Identifier]
+  | LValSlice [LValExpr]
 
 data Stmt =
-    StmtDecl Type [Identifier]
-  | StmtDeclInit  SymbolDecl Expr
-  | StmtDeclConst SymbolDecl Expr
+    StmtVarsDecl Type [Identifier]
+  | StmtVarDeclInit  SymbolDecl Expr
+  | StmtConstDecl SymbolDecl Expr
   | StmtAssign LValExpr Expr
   | StmtCall QualifiedIdentifier [Expr]
   | StmtReturn (Maybe Expr)
   | StmtAssert Expr
   | StmtUnpredictable
-  | StmtImpDef String
-  | StmtIfThen [(Expr, [Stmt])] (Maybe [Stmt])
+  | StmtImpDef Text
+  | StmtIf [(Expr, [Stmt])] (Maybe [Stmt])
   | StmtCase Expr [CaseAlternative]
   | StmtFor Identifier (Expr, Expr) [Stmt]
   | StmtWhile Expr [Stmt]
@@ -112,7 +115,7 @@ data Stmt =
   | StmtThrow Identifier
   | StmtUndefined
   | StmtSeeExpr Expr
-  | StmtSeeString String
+  | StmtSeeString Text
   | StmtTry [Stmt] Identifier [CatchAlternative]
 
 data CaseAlternative =
@@ -121,23 +124,23 @@ data CaseAlternative =
 
 data CasePattern =
     CasePatternInt Integer
-  | CasePatternHex Integer
   | CasePatternBin BitVector
   | CasePatternMask Mask
   | CasePatternIdentifier Identifier
   | CasePatternIgnore
-  | CasePatternSeq [CasePattern]
+  | CasePatternTuple [CasePattern]
 
 data CatchAlternative =
     CatchWhen Expr [Stmt]
   | CatchOtherwise [Stmt]
+
 
 -- Expressions ------------------------------------------------------
 
 data Expr =
     ExprLitString Text
   | ExprLitInt Integer
-  | ExprLitReal Rational
+  | ExprLitReal Integer Integer
   | ExprLitBin BitVector
   | ExprLitMask Mask
   | ExprVarRef Identifier
@@ -165,6 +168,7 @@ data SetElement =
 data Slice =
     SliceSingle Expr
   | SliceOffset Expr Expr
+  | SliceRange Expr Expr
 
 data UnOp =
     UnOpNot

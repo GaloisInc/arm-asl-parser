@@ -237,12 +237,12 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitSetterRefArg(ASLParser.SetterRefArgContext ctx) {
-        return sexp("SetterArg", sub(ctx.type()), atom("Reference"));
+        return sexp("SetterArg", id(ctx.id()), sub(ctx.type()), atom("Reference"));
     }
 
     @Override
     public SExp visitSetterValArg(ASLParser.SetterValArgContext ctx) {
-        return sexp("SetterArg", sub(ctx.type()), atom("Value"));
+        return sexp("SetterArg", id(ctx.id()), sub(ctx.type()), atom("Value"));
     }
 
     @Override
@@ -271,8 +271,8 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitIxTypeIdentifier(ASLParser.IxTypeIdentifierContext ctx) {
-        return sexp("IxTypeIdentifier", id(ctx.id()));
+    public SExp visitIxTypeRef(ASLParser.IxTypeRefContext ctx) {
+        return sexp("IxTypeRef", id(ctx.id()));
     }
 
     @Override
@@ -297,7 +297,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtConstDecl(ASLParser.StmtConstDeclContext ctx) {
-        return sexp("StmtConstDel", sub(ctx.symDecl()), sub(ctx.expr()));
+        return sexp("StmtConstDecl", sub(ctx.symDecl()), sub(ctx.expr()));
     }
 
     @Override
@@ -338,7 +338,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtElsIf(ASLParser.StmtElsIfContext ctx) {
-        return sexp("StmtElsIf", sub(ctx.expr()), sub(ctx.expr()));
+        return sexp("StmtElsIf", sub(ctx.expr()), sub(ctx.blockOrEmbed1()));
     }
 
     @Override
@@ -461,22 +461,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitCasePatternTuple(ASLParser.CasePatternTupleContext ctx) {
-        return sexp("CasePatternSequence", list(subs(ctx.children)));
-    }
-
-    @Override
-    public SExp visitLValArray(ASLParser.LValArrayContext ctx) {
-        return sexp("LValArray", list(subs(ctx.lValExpr())));
-    }
-
-    @Override
-    public SExp visitLValArrayIndex(ASLParser.LValArrayIndexContext ctx) {
-        return sexp("LValArrayIndex", sub(ctx.lValExpr()), list(subs(ctx.slice())));
-    }
-
-    @Override
-    public SExp visitLValMemberBits(ASLParser.LValMemberBitsContext ctx) {
-        return sexp("LValMemberBits", sub(ctx.lValExpr()), sub(ctx.identifierCommaList1()));
+        return sexp("CasePatternTuple", list(subs(ctx.children)));
     }
 
     @Override
@@ -485,8 +470,8 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitLValMemberArray(ASLParser.LValMemberArrayContext ctx) {
-        return sexp("LValMemberArray", sub(ctx.lValExpr()), sub(ctx.identifierCommaList1()));
+    public SExp visitLValVarRef(ASLParser.LValVarRefContext ctx) {
+        return sexp("LValVarRef", sub(ctx.qualId()));
     }
 
     @Override
@@ -495,8 +480,13 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitLValVarRef(ASLParser.LValVarRefContext ctx) {
-        return sexp("LValVarRef", sub(ctx.qualId()));
+    public SExp visitLValMemberArray(ASLParser.LValMemberArrayContext ctx) {
+        return sexp("LValMemberArray", sub(ctx.lValExpr()), sub(ctx.identifierCommaList1()));
+    }
+
+    @Override
+    public SExp visitLValArrayIndex(ASLParser.LValArrayIndexContext ctx) {
+        return sexp("LValArrayIndex", sub(ctx.lValExpr()), list(subs(ctx.slice())));
     }
 
     @Override
@@ -504,10 +494,19 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("LValSliceOf", sub(ctx.lValExpr()), sub(ctx.sliceCommaList1()));
     }
 
+    @Override
+    public SExp visitLValArray(ASLParser.LValArrayContext ctx) {
+        return sexp("LValArray", list(subs(ctx.lValExpr())));
+    }
 
     @Override
     public SExp visitLValTuple(ASLParser.LValTupleContext ctx) {
         return sexp("LValTuple", list(subs(ctx.lValExpr())));
+    }
+
+    @Override
+    public SExp visitLValMemberBits(ASLParser.LValMemberBitsContext ctx) {
+        return sexp("LValMemberBits", sub(ctx.lValExpr()), sub(ctx.identifierCommaList1()));
     }
 
     @Override
