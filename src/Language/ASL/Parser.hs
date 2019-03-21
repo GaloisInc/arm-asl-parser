@@ -1,6 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module Language.ASL.Parser where -- (parseAslDefs, parseAslInsts) where
+module Language.ASL.Parser
+( parseAslDefs
+, parseAslInsts
+, parseAslDefsFile
+, parseAslInstsFile
+) where
 
 import Data.Text(Text, pack, unpack)
 import qualified Data.Text as Text
@@ -11,7 +16,7 @@ import Numeric(readFloat, showFFloat, readHex)
 
 import Data.SCargot(encodeOne, decodeOne, SExprPrinter(..), SExprParser(..)
                    , basicPrint, setFromCarrier)
-import Data.SCargot.Parse( mkParser, asWellFormed )
+import Data.SCargot.Parse(mkParser, asWellFormed )
 import Data.SCargot.Repr(WellFormedSExpr(..), fromWellFormed)
 import Control.Monad.Except(Except(..), MonadError(..), runExcept)
 
@@ -114,13 +119,17 @@ sexprPrinter = setFromCarrier fromWellFormed (basicPrint showAtom)
 
 type SExprAParser a = Except Text a
 
+errCtx :: Text -> SExprA -> SExprAParser a -> SExprAParser a
+errCtx ctxName form p =
+  p `catchError` \e -> throwError $ e <> "\n in " <> ctxName <> " : " <> encodeOne sexprPrinter form
+
 err :: Text -> Except Text a
 err t = throwError t
 
 unexpectedForm :: Text -> SExprA -> SExprAParser a
 unexpectedForm desc expr = err msg
   where
-    msg = "in " <> desc <> " : " <> encodeOne sexprPrinter expr
+    msg = "unexpected form in " <> desc <> " : " <> encodeOne sexprPrinter expr
 
 -- tryWith :: Text -> SExprA -> Except [(Text, SExprA)] a -> Except [(Text, SExprA)] a
 -- tryWith t s c = c `catchError` \es -> err $ (t,s):err
@@ -152,6 +161,7 @@ parseInstEncoding s = nameArgs s >>= \case
     iset' <- parseId iset >>= \case
       "A32" -> return Syn.A32
       "T32" -> return Syn.T32
+      "T16" -> return Syn.T16
       _ -> unexpectedForm "parseInstEncoding" s
 
     flds' <- parseList parseInstField flds
@@ -190,7 +200,7 @@ parseDefs ds = nameArgs ds >>= \case
   _                        -> throwError "Expecting AslDefinitions"
 
 parseDef :: SExprA -> SExprAParser Syn.Definition
-parseDef d = nameArgs d >>= \case
+parseDef d = errCtx "definition" d $ nameArgs d >>= \case
   ("DefTypeBuiltin", [i]) -> do
     name <- parseId i
     return $ Syn.DefTypeBuiltin name
@@ -314,8 +324,8 @@ parseStmtBlock s = nameArgs s >>= \case
   _                  -> unexpectedForm "parseStmtBlock" s
 
 parseStmt :: SExprA -> SExprAParser Syn.Stmt
-parseStmt s = nameArgs s >>= \case
-  ("StmtVarsDecl", [t, is]) -> do
+parseStmt s = errCtx "statement" s $ nameArgs s >>= \case
+  ("StmtVarsDecl", [is, t]) -> do
     t' <- parseType t
     is' <- parseList parseId is
     return $ Syn.StmtVarsDecl t' is'
@@ -406,6 +416,11 @@ parseStmt s = nameArgs s >>= \case
     ca' <- parseList parseCatchAlt ca
     return $ Syn.StmtTry ss' i' ca'
 
+  ("StmtDefEnum", [i, ns]) -> do
+    i' <- parseId i
+    ns' <- parseList parseId ns
+    return $ Syn.StmtDefEnum i' ns'
+
   _ -> unexpectedForm "parseStmt" s
 
   where
@@ -417,13 +432,13 @@ parseStmt s = nameArgs s >>= \case
 
 parseCaseAlt :: SExprA -> SExprAParser Syn.CaseAlternative
 parseCaseAlt s = nameArgs s >>= \case
-  ("CaseWhen", [pats, guard, stmts]) -> do
+  ("CaseAltWhen", [pats, guard, stmts]) -> do
     pats' <- parseList parseCasePattern pats
     guard' <- parseMaybe parseExpr guard
-    ss' <- parseStmtBlock s
+    ss' <- parseStmtBlock stmts
     return $ Syn.CaseWhen pats' guard' ss'
 
-  ("CaseOtherwise", [stmts]) -> do
+  ("CaseAltOtherwise", [stmts]) -> do
     stmts' <- parseStmtBlock stmts
     return $ Syn.CaseOtherwise stmts'
 
@@ -499,11 +514,7 @@ parseLValExpr s = nameArgs s >>= \case
 
 
 parseExpr :: SExprA -> SExprAParser Syn.Expr
-parseExpr s = parseExpr' s `catchError` \e -> throwError $ e <> "\n" <> "in expression " <> encodeOne sexprPrinter s
-
--- TODO: finish exprs
-parseExpr' :: SExprA -> SExprAParser Syn.Expr
-parseExpr' s = nameArgs s >>= \case
+parseExpr s = errCtx "expression" s $ nameArgs s >>= \case
   ("ExprLitString", [n]) -> Syn.ExprLitString <$> parseStringLit n
   ("ExprLitNat", [n]) -> Syn.ExprLitInt <$> parseNatLit n
   ("ExprLitHex", [n]) -> Syn.ExprLitInt <$> parseHexLit n
@@ -552,7 +563,7 @@ parseExpr' s = nameArgs s >>= \case
     return $ Syn.ExprMemberBits e' ms'
 
   ("ExprCall", [fun, args]) -> do
-    fun' <- parseExpr fun
+    fun' <- parseQualId fun
     args' <- parseList parseExpr args
     return $ Syn.ExprCall fun' args'
 
@@ -602,8 +613,8 @@ parseExpr' s = nameArgs s >>= \case
       "^"    -> return Syn.BinOpPow
       "&&"   -> return Syn.BinOpLogicalAnd
       "||"   -> return Syn.BinOpLogicalOr
-      "|"    -> return Syn.BinOpBitwiseOr
-      "&"    -> return Syn.BinOpBitwiseAnd
+      "OR"   -> return Syn.BinOpBitwiseOr
+      "AND"  -> return Syn.BinOpBitwiseAnd
       "EOR"  -> return Syn.BinOpBitwiseXor
       "++"   -> return Syn.BinOpPlusPlus
       "QUOT" -> return Syn.BinOpQuot
@@ -767,3 +778,7 @@ parseAslDefsFile f = do
   t <- pack <$> readFile f
   return $ parseAslDefs t
 
+parseAslInstsFile :: FilePath -> IO (Either Text [Syn.Instruction])
+parseAslInstsFile f = do
+  t <- pack <$> readFile f
+  return $ parseAslInsts t

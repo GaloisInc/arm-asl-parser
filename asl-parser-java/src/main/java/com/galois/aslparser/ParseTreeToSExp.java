@@ -333,7 +333,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtIf(ASLParser.StmtIfContext ctx) {
-        return sexp("StmtIf", sub(ctx.test), list(subs(ctx.stmtElsIf())), maybe(ctx.elseExpr));
+        return sexp("StmtIf", sub(ctx.test), sub(ctx.thenExpr), list(subs(ctx.stmtElsIf())), maybe(ctx.elseExpr));
     }
 
     @Override
@@ -383,7 +383,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtSee(ASLParser.StmtSeeContext ctx) {
-        return sexp("StmtSee", atomq(ctx.SEE_TOK().getText()));
+        return sexp("StmtSee", atomq(ctx.SEE_TOK().getText().replace("\"", "")));
     }
 
     @Override

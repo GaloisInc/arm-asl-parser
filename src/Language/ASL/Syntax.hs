@@ -33,7 +33,7 @@ data Instruction =
               }
   deriving(Show, Eq)
 
-data InstructionSet = A32 | T32
+data InstructionSet = A32 | T32 | T16
   deriving(Show, Eq)
 
 data InstructionEncoding =
@@ -130,6 +130,7 @@ data Stmt =
   | StmtSeeExpr Expr
   | StmtSeeString Text
   | StmtTry [Stmt] Identifier [CatchAlternative]
+  | StmtDefEnum Identifier [Identifier]
   deriving(Show, Eq)
 
 data CaseAlternative =
@@ -168,7 +169,7 @@ data Expr =
   | ExprMembers Expr [Identifier]
   | ExprInMask Expr Mask
   | ExprMemberBits Expr [Identifier]
-  | ExprCall Expr [Expr]
+  | ExprCall QualifiedIdentifier [Expr]
   | ExprInSet Expr [SetElement]
   | ExprUnknown
   | ExprTuple [Expr]
