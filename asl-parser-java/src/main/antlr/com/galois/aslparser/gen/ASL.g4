@@ -242,8 +242,8 @@ qualId:
 
 id: IDENTIFIER | 'register' | 'enumeration';
 
-INDENT: 'IND' ;
-DEDENT: 'DED' ;
+//INDENT: 'IND' ;
+//DEDENT: 'DED' ;
 
 SEE_TOK : 'SEE' ~';'+ ;
 IDENTIFIER : [A-Za-z_][A-Za-z0-9_]* ;

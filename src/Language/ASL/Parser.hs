@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
-module Language.ASL.Parser where
+module Language.ASL.Parser where -- (parseAslDefs, parseAslInsts) where
 
 import Data.Text(Text, pack, unpack)
 import qualified Data.Text as Text
@@ -13,11 +13,11 @@ import Data.SCargot(encodeOne, decodeOne, SExprPrinter(..), SExprParser(..)
                    , basicPrint, setFromCarrier)
 import Data.SCargot.Parse( mkParser, asWellFormed )
 import Data.SCargot.Repr(WellFormedSExpr(..), fromWellFormed)
-import Control.Monad.Except(Except(..), MonadError(..))
+import Control.Monad.Except(Except(..), MonadError(..), runExcept)
 
 import qualified Language.ASL.Syntax as Syn
 
--- PARSER -----------------------------------------------------------
+-- PARSING INFRASTRUCTURE -------------------------------------------
 
 data Atom = AtomId   Syn.Identifier
           | AtomInt  Integer
@@ -49,42 +49,43 @@ showAtom = \case
       Syn.MaskBitUnset  -> '0'
 
 parseAtom :: Parser Atom
-parseAtom = P.choice $ [ parseIdentifier
-                       , P.try parseReal
-                       , parseInt
-                       , P.try parseBin
-                       , parseMask
+parseAtom = P.choice $ [ parseIdentifierAtom
+                       , P.try parseRealAtom
+                       , parseIntAtom
+                       , P.try parseBinAtom
+                       , parseMaskAtom
+                       , parseStringAtom
                        ]
   where
-    parseIdentifier = do
+    parseIdentifierAtom = do
       l <- P.choice [ P.letter, P.char '_' ]
       r <- P.many $ P.choice [ P.alphaNum, P.char '_' ]
       return (AtomId $ pack (l:r))
 
-    parseString :: Parser Atom
-    parseString = do
+    parseStringAtom :: Parser Atom
+    parseStringAtom = do
       _   <- P.char '"'
       str <- P.many (P.noneOf ['"'])
       _   <- P.char '"'
       return (AtomString $ pack str)
 
-    parseInt = do
+    parseIntAtom = do
       n <- P.many1 P.digit
       return (AtomInt $ read n)
 
-    parseReal = do
+    parseRealAtom = do
       i <- P.many1 P.digit
       d <- P.char '.'
       f <- P.many1 P.digit
       return (AtomReal (read i) (read f))
 
-    parseBin = do
+    parseBinAtom = do
       _ <- P.char '\''
       bits <- P.many (P.oneOf "10 ")
       _ <- P.char '\''
       return (AtomBin $ parseBits bits)
 
-    parseMask = do
+    parseMaskAtom = do
       _ <- P.char '\''
       bits <- P.many (P.oneOf "10x ")
       _ <- P.char '\''
@@ -109,7 +110,7 @@ sexprParser = asWellFormed (mkParser parseAtom)
 sexprPrinter :: SExprPrinter Atom (SExprA)
 sexprPrinter = setFromCarrier fromWellFormed (basicPrint showAtom)
 
--- PARSER -----------------------------------------------------------
+-- SEXPR PARSER -----------------------------------------------------
 
 type SExprAParser a = Except Text a
 
@@ -129,6 +130,59 @@ nameArgs (WFSList (nmA:argsA)) = do
   nm <- parseId nmA
   return (nm, argsA)
 nameArgs s = unexpectedForm "nameArgs" s
+
+parseInsts :: SExprA -> SExprAParser [Syn.Instruction]
+parseInsts s = nameArgs s >>= \case
+  ("Instructions", insts) -> mapM parseInst insts
+  _ -> throwError "parseInsts failed"
+
+parseInst :: SExprA -> SExprAParser Syn.Instruction
+parseInst s = nameArgs s >>= \case
+  ("Instruction", [name, encodings, impl]) -> do
+    name' <- parseId name
+    encodings' <- parseList parseInstEncoding encodings
+    impl' <- parseStmtBlock impl
+    return $ Syn.Instruction name' encodings' impl'
+  _ -> unexpectedForm "parseInst" s
+
+parseInstEncoding :: SExprA -> SExprAParser Syn.InstructionEncoding
+parseInstEncoding s = nameArgs s >>= \case
+  ("InstructionEncoding", [name, iset, flds, opMsk, guard, unpreds, decoder]) -> do
+    name' <- parseId name
+    iset' <- parseId iset >>= \case
+      "A32" -> return Syn.A32
+      "T32" -> return Syn.T32
+      _ -> unexpectedForm "parseInstEncoding" s
+
+    flds' <- parseList parseInstField flds
+    opMsk' <- parseMaskLit opMsk
+    guard' <- parseMaybe parseExpr guard
+    unpreds' <- parseList parseUnpredUnless unpreds
+    decoder' <- listMaybeToList <$> parseMaybe parseStmtBlock decoder
+    return $ Syn.InstructionEncoding name' iset' flds' opMsk' guard' unpreds' decoder'
+  _ -> unexpectedForm "parseInstEncoding" s
+
+parseInstField :: SExprA -> SExprAParser Syn.InstructionField
+parseInstField s = nameArgs s >>= \case
+  ("InstructionField", [n, b, o]) -> do
+    n' <- parseId n
+    b' <- parseNatLit b
+    o' <- parseNatLit o
+    return $ Syn.InstructionField n' b' o'
+
+  _ -> unexpectedForm "parseInstField" s
+
+parseUnpredUnless :: SExprA -> SExprAParser (Integer, Bool)
+parseUnpredUnless s = nameArgs s >>= \case
+    ("InstructionUnpredictableUnless", [n, b]) -> do
+      n' <- parseNatLit n
+      b' <- parseBinLit b >>= \case
+        [a] -> return a
+        _   -> unexpectedForm "parseUnpredUnless" s
+
+      return $ (n', b')
+
+    _ -> unexpectedForm "parseUnpredUnless" s
 
 parseDefs :: SExprA -> SExprAParser [Syn.Definition]
 parseDefs ds = nameArgs ds >>= \case
@@ -377,20 +431,15 @@ parseCaseAlt s = nameArgs s >>= \case
 
 parseCasePattern :: SExprA -> SExprAParser Syn.CasePattern
 parseCasePattern s = nameArgs s >>= \case
-  ("CasePatternNat", [n]) -> simplePattern n parseNatLit Syn.CasePatternInt
-  ("CasePatternHex", [h]) -> simplePattern h parseHexLit Syn.CasePatternInt
-  ("CasePatternBin", [b]) -> simplePattern b parseBinLit Syn.CasePatternBin
-  ("CasePatternMask", [m]) -> simplePattern m parseMaskLit Syn.CasePatternMask
-  ("CasePatternIdentifier", [i]) -> simplePattern i parseId Syn.CasePatternIdentifier
+  ("CasePatternNat", [n]) ->  Syn.CasePatternInt <$>  parseNatLit n
+  ("CasePatternHex", [h]) -> Syn.CasePatternInt <$> parseHexLit h
+  ("CasePatternBin", [b]) -> Syn.CasePatternBin <$> parseBinLit b
+  ("CasePatternMask", [m]) -> Syn.CasePatternMask <$> parseMaskLit m
+  ("CasePatternIdentifier", [i]) -> Syn.CasePatternIdentifier <$> parseId i
   ("CasePatternIgnore", []) -> return Syn.CasePatternIgnore
   ("CasePatternTuple", [b]) -> do
     b' <- parseList parseCasePattern b
     return $ Syn.CasePatternTuple b'
-
-  where
-    simplePattern l parser cns = do
-      l' <- parser l
-      return $ cns l'
 
 parseCatchAlt :: SExprA -> SExprAParser Syn.CatchAlternative
 parseCatchAlt s = nameArgs s >>= \case
@@ -449,15 +498,134 @@ parseLValExpr s = nameArgs s >>= \case
     return $ Syn.LValSlice lvs'
 
 
--- TODO: finish exprs
 parseExpr :: SExprA -> SExprAParser Syn.Expr
-parseExpr s = nameArgs s >>= \case
-  ("ExprLitInt", [n]) -> lit n parseNatLit Syn.ExprLitInt
-  ("ExprLitHex", [n]) -> lit n parseHexLit Syn.ExprLitInt
+parseExpr s = parseExpr' s `catchError` \e -> throwError $ e <> "\n" <> "in expression " <> encodeOne sexprPrinter s
+
+-- TODO: finish exprs
+parseExpr' :: SExprA -> SExprAParser Syn.Expr
+parseExpr' s = nameArgs s >>= \case
+  ("ExprLitString", [n]) -> Syn.ExprLitString <$> parseStringLit n
+  ("ExprLitNat", [n]) -> Syn.ExprLitInt <$> parseNatLit n
+  ("ExprLitHex", [n]) -> Syn.ExprLitInt <$> parseHexLit n
+  ("ExprLitReal", [n]) -> uncurry Syn.ExprLitReal <$>  parseRealLit n
+  ("ExprLitBin", [n]) -> Syn.ExprLitBin <$> parseBinLit n
+  ("ExprLitMask", [n]) -> Syn.ExprLitMask <$> parseMaskLit n
+  ("ExprVarRef", [n]) -> Syn.ExprVarRef <$> parseQualId n
+  ("ExprImpDef", [s])  -> Syn.ExprImpDef <$> parseMaybe parseStringLit s
+  ("ExprSlice", [e, sl]) -> do
+    e' <- parseExpr e
+    sl' <- parseList parseSlice sl
+    return $ Syn.ExprSlice e' sl'
+
+  ("ExprIndex", [e, sl]) -> do
+    e' <- parseExpr e
+    sl' <- parseList parseSlice sl
+    return $ Syn.ExprIndex e' sl'
+
+  ("ExprUnOp", [op, e]) -> do
+    e' <- parseExpr e
+    op' <- parseStringLit op >>= \case
+      "!" -> return Syn.UnOpNot
+      "-" -> return Syn.UnOpNeg
+      _   -> unexpectedForm "parseExpr" s
+    return $ Syn.ExprUnOp op' e'
+
+  ("ExprBinOp", [op, e1, e2]) -> do
+    e1' <- parseExpr e1
+    e2' <- parseExpr e2
+    op' <- parseStringLit op >>= lookupBinOp
+    return $ Syn.ExprBinOp op' e1' e2'
+
+  ("ExprMembers", [e, ms]) -> do
+    e' <- parseExpr e
+    ms' <- parseList parseId ms
+    return $ Syn.ExprMembers e' ms'
+
+  ("ExprInMask", [e, m]) -> do
+    e' <- parseExpr e
+    m' <- parseMaskLit m
+    return $ Syn.ExprInMask e' m'
+
+  ("ExprMemberBits", [e, ms]) -> do
+    e' <- parseExpr e
+    ms' <- parseList parseId ms
+    return $ Syn.ExprMemberBits e' ms'
+
+  ("ExprCall", [fun, args]) -> do
+    fun' <- parseExpr fun
+    args' <- parseList parseExpr args
+    return $ Syn.ExprCall fun' args'
+
+  ("ExprInSet", [e, set]) -> do
+    e' <- parseExpr e
+    set' <- parseSet set
+    return $ Syn.ExprInSet e' set'
+
+  ("ExprUnknown", []) -> return Syn.ExprUnknown
+
+  ("ExprTuple", [es]) -> Syn.ExprTuple <$> parseList parseExpr es
+  ("ExprIf", [test, thn, elsifs, els]) -> do
+    test' <- parseExpr test
+    thn' <- parseExpr thn
+    elsifs' <- parseList parseElsIf elsifs
+    els <- parseExpr els
+    let ts = (test', thn'):elsifs'
+    return $ Syn.ExprIf ts els
+
+  ("ExprMember", [e, i]) -> do
+    e' <- parseExpr e
+    i' <- parseId i
+    return $ Syn.ExprMember e' i'
+
   _ -> unexpectedForm "parseExpr" s
 
   where
-    lit e parser cns = cns <$> parser e
+    parseElsIf elsif = nameArgs elsif >>= \case
+      ("ExprElsIf", [test, r]) -> do
+        test' <- parseExpr test
+        r' <- parseExpr r
+        return $ (test', r')
+
+    lookupBinOp = \case
+      "=="   -> return Syn.BinOpEQ
+      "!="   -> return Syn.BinOpNEQ
+      ">"    -> return Syn.BinOpGT
+      ">="   -> return Syn.BinOpGTEQ
+      ">>"   -> return Syn.BinOpShiftRight
+      "<"    -> return Syn.BinOpLT
+      "<="   -> return Syn.BinOpLTEQ
+      "<<"   -> return Syn.BinOpShiftLeft
+      "+"    -> return Syn.BinOpAdd
+      "-"    -> return Syn.BinOpSub
+      "*"    -> return Syn.BinOpMul
+      "/"    -> return Syn.BinOpDivide
+      "^"    -> return Syn.BinOpPow
+      "&&"   -> return Syn.BinOpLogicalAnd
+      "||"   -> return Syn.BinOpLogicalOr
+      "|"    -> return Syn.BinOpBitwiseOr
+      "&"    -> return Syn.BinOpBitwiseAnd
+      "EOR"  -> return Syn.BinOpBitwiseXor
+      "++"   -> return Syn.BinOpPlusPlus
+      "QUOT" -> return Syn.BinOpQuot
+      "REM"  -> return Syn.BinOpRem
+      "DIV"  -> return Syn.BinOpDiv
+      "MOD"  -> return Syn.BinOpMod
+      ":"    -> return Syn.BinOpConcat
+      _      -> unexpectedForm "parseExpr" s
+
+parseSetElement :: SExprA -> SExprAParser Syn.SetElement
+parseSetElement s = nameArgs s >>= \case
+  ("SetElementSingle", [e]) -> Syn.SetEltSingle <$> parseExpr e
+  ("SetElementRange", [e1, e2]) -> do
+    e1' <- parseExpr e1
+    e2' <- parseExpr e2
+    return $ Syn.SetEltRange e1' e2'
+  _ -> unexpectedForm "parseSetElement" s
+
+parseSet :: SExprA -> SExprAParser [Syn.SetElement]
+parseSet s = nameArgs s >>= \case
+  ("Set", [elts]) -> parseList parseSetElement elts
+  _ -> unexpectedForm "parseSet" s
 
 parseSlice :: SExprA -> SExprAParser Syn.Slice
 parseSlice s = nameArgs s >>= \case
@@ -492,10 +660,11 @@ parseIxType s = nameArgs s >>= \case
 
 parseSymDecl :: SExprA -> SExprAParser Syn.SymbolDecl
 parseSymDecl s = nameArgs s >>= \case
-  ("SymbolDecl", [i, t]) -> do
+  ("SymDecl", [i, t]) -> do
     ident <- parseId i
     typ <- parseType t
     return (ident, typ)
+  _ -> unexpectedForm "parseSymDecl" s
 
 parseQualId :: SExprA -> SExprAParser Syn.QualifiedIdentifier
 parseQualId s = nameArgs s >>= \case
@@ -554,14 +723,47 @@ parseBinLit = \case
 parseMaskLit :: SExprA -> SExprAParser Syn.Mask
 parseMaskLit = \case
   WFSAtom (AtomMask mask) -> return mask
+  WFSAtom (AtomBin  bin)  -> return (binToMask <$> bin)
   k                       -> unexpectedForm "parseMaskLit" k
+  where
+    binToMask s = if s then Syn.MaskBitSet else Syn.MaskBitUnset
 
 parseStringLit :: SExprA -> SExprAParser Text
 parseStringLit = \case
   WFSAtom (AtomString str) -> return str
   k                        -> unexpectedForm "parseStringLit" k
 
+
+parseRealLit :: SExprA -> SExprAParser (Integer, Integer)
+parseRealLit = \case
+  WFSAtom (AtomReal wh fr) -> return (wh, fr)
+  k                        -> unexpectedForm "parseRealLit" k
+
 listMaybeToList :: Maybe [a] -> [a]
 listMaybeToList = \case
   Nothing -> []
   Just as -> as
+
+-- DRIVER -----------------------------------------------------------
+
+parseSExprA :: Text -> Either Text SExprA
+parseSExprA t =
+  case decodeOne sexprParser t of
+    Left err -> Left $ pack err
+    Right r -> Right r
+
+parseAslDefs :: Text -> Either Text [Syn.Definition]
+parseAslDefs t = do
+  defs <- parseSExprA t
+  runExcept (parseDefs defs)
+
+parseAslInsts :: Text -> Either Text [Syn.Instruction]
+parseAslInsts t = do
+  insts <- parseSExprA t
+  runExcept (parseInsts insts)
+
+parseAslDefsFile :: FilePath -> IO (Either Text [Syn.Definition])
+parseAslDefsFile f = do
+  t <- pack <$> readFile f
+  return $ parseAslDefs t
+

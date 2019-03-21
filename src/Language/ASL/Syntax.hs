@@ -9,10 +9,12 @@ import Data.Text(Text)
 type Identifier = Text
 
 data QualifiedIdentifier = QualifiedIdentifier ArchQualifier Identifier
+  deriving(Show, Eq)
 
 data ArchQualifier = ArchQualAArch32
                    | ArchQualAArch64
                    | ArchQualAny
+  deriving(Show, Eq)
 
 type SymbolDecl = (Identifier, Type)
 
@@ -29,23 +31,28 @@ data Instruction =
               , instEncodings :: [InstructionEncoding]
               , instExecute   :: [Stmt]
               }
+  deriving(Show, Eq)
 
 data InstructionSet = A32 | T32
+  deriving(Show, Eq)
 
 data InstructionEncoding =
-  InstructionEncoding { encInstrSet      :: InstructionSet
+  InstructionEncoding { encName          :: Text
+                      , encInstrSet      :: InstructionSet
                       , encFields        :: [InstructionField]
                       , encOpcodeMask    :: Mask
-                      , encGuard         :: Expr
-                      , encUnpredictable :: [(Int, Bool)]
+                      , encGuard         :: Maybe Expr
+                      , encUnpredictable :: [(Integer, Bool)]
                       , encDecode        :: [Stmt]
                       }
+  deriving(Show, Eq)
 
 data InstructionField =
   InstructionField { instFieldName   :: Identifier
-                   , instFieldBegin  :: Int
-                   , instFieldOffset :: Int
+                   , instFieldBegin  :: Integer
+                   , instFieldOffset :: Integer
                    }
+  deriving(Show, Eq)
 
 -- Definitions ------------------------------------------------------
 
@@ -65,8 +72,10 @@ data Definition =
                         }
   | DefGetter           QualifiedIdentifier [SymbolDecl] [Type] [Stmt]
   | DefSetter           QualifiedIdentifier [SetterArg] SymbolDecl [Stmt]
+  deriving(Show, Eq)
 
 data SetterArg = SetterArg SymbolDecl Bool
+  deriving(Show, Eq)
 
 -- Types ------------------------------------------------------------
 
@@ -76,12 +85,15 @@ data Type =
   | TypeOf    Expr
   | TypeReg   Integer [RegField]
   | TypeArray Type IndexType
+  deriving(Show, Eq)
 
 data IndexType =
     IxTypeRange Expr Expr
   | IxTypeRef   Identifier
+  deriving(Show, Eq)
 
 data RegField = RegField Identifier [Slice]
+  deriving(Show, Eq)
 
 -- Statements -------------------------------------------------------
 
@@ -96,6 +108,7 @@ data LValExpr =
   | LValTuple [LValExpr]
   | LValMemberBits LValExpr [Identifier]
   | LValSlice [LValExpr]
+  deriving(Show, Eq)
 
 data Stmt =
     StmtVarsDecl Type [Identifier]
@@ -117,10 +130,12 @@ data Stmt =
   | StmtSeeExpr Expr
   | StmtSeeString Text
   | StmtTry [Stmt] Identifier [CatchAlternative]
+  deriving(Show, Eq)
 
 data CaseAlternative =
     CaseWhen [CasePattern] (Maybe Expr) [Stmt]
   | CaseOtherwise [Stmt]
+  deriving(Show, Eq)
 
 data CasePattern =
     CasePatternInt Integer
@@ -129,11 +144,12 @@ data CasePattern =
   | CasePatternIdentifier Identifier
   | CasePatternIgnore
   | CasePatternTuple [CasePattern]
+  deriving(Show, Eq)
 
 data CatchAlternative =
     CatchWhen Expr [Stmt]
   | CatchOtherwise [Stmt]
-
+  deriving(Show, Eq)
 
 -- Expressions ------------------------------------------------------
 
@@ -143,10 +159,9 @@ data Expr =
   | ExprLitReal Integer Integer
   | ExprLitBin BitVector
   | ExprLitMask Mask
-  | ExprVarRef Identifier
+  | ExprVarRef QualifiedIdentifier
   | ExprImpDef (Maybe Text)
-  | ExprSlice  [Slice]
-  | ExprConcat Expr Expr
+  | ExprSlice Expr [Slice]
   | ExprIndex Expr [Slice]
   | ExprUnOp UnOp Expr
   | ExprBinOp BinOp Expr Expr
@@ -154,25 +169,29 @@ data Expr =
   | ExprInMask Expr Mask
   | ExprMemberBits Expr [Identifier]
   | ExprCall Expr [Expr]
-  | ExprInSet Expr Expr [SetElement]
+  | ExprInSet Expr [SetElement]
   | ExprUnknown
   | ExprTuple [Expr]
   | ExprIf {- test, result -} [(Expr, Expr)]
            {- else -}Expr
   | ExprMember Expr Identifier
+  deriving(Show, Eq)
 
 data SetElement =
     SetEltSingle Expr
   | SetEltRange Expr Expr
+  deriving(Show, Eq)
 
 data Slice =
     SliceSingle Expr
   | SliceOffset Expr Expr
   | SliceRange Expr Expr
+  deriving(Show, Eq)
 
 data UnOp =
     UnOpNot
   | UnOpNeg
+  deriving(Show, Eq)
 
 data BinOp =
     BinOpEQ
@@ -186,15 +205,17 @@ data BinOp =
   | BinOpAdd
   | BinOpSub
   | BinOpMul
-  | BinOpDivide -- this is the '/' operator?
+  | BinOpDivide
   | BinOpPow
   | BinOpLogicalAnd
   | BinOpLogicalOr
   | BinOpBitwiseOr
   | BinOpBitwiseAnd
   | BinOpBitwiseXor
-  | BinOpPlusPlus   -- this is the '++' operator - doesn't appear in out.asl
+  | BinOpPlusPlus   -- this is the '++' operator - doesn't appear in out.asl - what does it mean?
   | BinOpQuot
   | BinOpRem
   | BinOpDiv
   | BinOpMod
+  | BinOpConcat
+  deriving(Show, Eq)

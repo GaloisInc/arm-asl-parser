@@ -54,11 +54,11 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     private SExp bin(TerminalNode bin_lit) {
-        return atomq(bin_lit.getText().replace("'", ""));
+        return atom(bin_lit.getText());
     }
 
     private SExp mask(TerminalNode mask_lit) {
-        return atomq(mask_lit.getText().replace("'", ""));
+        return atom(mask_lit.getText());
     }
 
     private SExp real(TerminalNode real_lit) {
@@ -514,20 +514,43 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("LValSlice", list(subs(ctx.lValExpr())));
     }
 
-    // -- EXPRESSIONS -----------------------------------------------
 
+    // -- EXPRESSIONS -----------------------------------------------
     @Override
     public SExp visitExprLitString(ASLParser.ExprLitStringContext ctx) {
         return sexp("ExprLitString", stringLit(ctx.STRING_LIT()));
     }
 
     @Override
+    public SExp visitExprLitNat(ASLParser.ExprLitNatContext ctx) {
+        return sexp("ExprLitNat", nat(ctx.NAT_LIT()));
+    }
+
+    @Override
+    public SExp visitExprLitHex(ASLParser.ExprLitHexContext ctx) {
+        return sexp("ExprLitHex", hex(ctx.HEX_LIT()));
+    }
+
+    @Override
+    public SExp visitExprLitReal(ASLParser.ExprLitRealContext ctx) {
+        return sexp("ExprLitReal", real(ctx.REAL_LIT()));
+    }
+
+    @Override
+    public SExp visitExprLitBin(ASLParser.ExprLitBinContext ctx) {
+        return sexp("ExprLitBin", bin(ctx.BIN_LIT()));
+    }
+
+    @Override
+    public SExp visitExprLitMask(ASLParser.ExprLitMaskContext ctx) {
+        return sexp("ExprLitMask", atom(ctx.MASK_LIT().getText()));
+    }
+
+    @Override
     public SExp visitExprImpDef(ASLParser.ExprImpDefContext ctx) {
-        if(ctx.STRING_LIT() == null) {
-            return sexp("ExprImpDef");
-        } else {
-            return sexp("ExprImpDef", stringLit(ctx.STRING_LIT()));
-        }
+        return ctx.STRING_LIT() == null ?
+            sexp("ExprImpDef", atom("Nothing"))
+          : sexp("ExprImpDef", sexp("Just", stringLit(ctx.STRING_LIT())));
     }
 
     @Override
@@ -551,11 +574,6 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitExprLitNat(ASLParser.ExprLitNatContext ctx) {
-        return sexp("ExprLitNat", nat(ctx.NAT_LIT()));
-    }
-
-    @Override
     public SExp visitExprMembers(ASLParser.ExprMembersContext ctx) {
         return sexp("ExprMembers", sub(ctx.expr()), sub(ctx.identifierCommaList1()));
     }
@@ -563,11 +581,6 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     @Override
     public SExp visitExprInMask(ASLParser.ExprInMaskContext ctx) {
         return sexp("ExprInMask", sub(ctx.expr()), mask(ctx.MASK_LIT()));
-    }
-
-    @Override
-    public SExp visitExprLitHex(ASLParser.ExprLitHexContext ctx) {
-        return sexp("ExprLitHex", hex(ctx.HEX_LIT()));
     }
 
     @Override
@@ -586,11 +599,6 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
-    public SExp visitExprLitBin(ASLParser.ExprLitBinContext ctx) {
-        return sexp("ExprLitBin", bin(ctx.BIN_LIT()));
-    }
-
-    @Override
     public SExp visitExprUnknown(ASLParser.ExprUnknownContext ctx) {
         return sexp("ExprUnknown");
     }
@@ -600,20 +608,10 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("ExprTuple", sub(ctx.exprCommaList1()));
     }
 
-    @Override
-    public SExp visitExprLitReal(ASLParser.ExprLitRealContext ctx) {
-        return sexp("ExprLitReal", real(ctx.REAL_LIT()));
-    }
-
 
     @Override
     public SExp visitExprVarRef(ASLParser.ExprVarRefContext ctx) {
         return sexp("ExprVarRef", sub(ctx.qualId()));
-    }
-
-    @Override
-    public SExp visitExprLitMask(ASLParser.ExprLitMaskContext ctx) {
-        return sexp("ExprLitMask", atom(ctx.MASK_LIT().getText()));
     }
 
     @Override
