@@ -27,13 +27,14 @@ type Mask = [MaskBit]
 -- Instructions -----------------------------------------------------
 
 data Instruction =
-  Instruction { instName      :: Text
-              , instEncodings :: [InstructionEncoding]
-              , instExecute   :: [Stmt]
+  Instruction { instName       :: Text
+              , instEncodings  :: [InstructionEncoding]
+              , instPostDecode :: [Stmt]
+              , instExecute    :: [Stmt]
               }
   deriving(Show, Eq)
 
-data InstructionSet = A32 | T32 | T16
+data InstructionSet = A32 | T32 | T16 | A64
   deriving(Show, Eq)
 
 data InstructionEncoding =
