@@ -6,10 +6,14 @@ tokens { INDENT, DEDENT }
 
 instructions: instruction* EOF ;
 
-instruction: '__instruction' id INDENT encoding+ postdecode? '__execute' indentedBlock DEDENT ;
+instruction: '__instruction' idWithDots
+    INDENT encoding+
+           ('__postdecode' postDecodeBlock=indentedBlock?)?
+           '__execute'     executeBlock=indentedBlock?
+    DEDENT ;
 
 encoding:
-    '__encoding' id
+    '__encoding' idWithDots
     INDENT
         '__instruction_set' instructionSet=('A64'|'A32'|'T32'|'T16')
         instructionField*
@@ -18,10 +22,6 @@ encoding:
         instrUnpredictableUnless*
         '__decode' (decode=indentedBlock)?
     DEDENT;
-
-
-postdecode:
-    '__postdecode' indentedBlock;
 
 instructionField: '__field' id begin=NAT_LIT '+:' len=NAT_LIT ;
 instrUnpredictableUnless: '__unpredictable_unless' idx=NAT_LIT '==' bin=BIN_LIT ;
@@ -142,8 +142,7 @@ casePattern:
 
 
 lValExpr:
-      '-'                                                 #LValIgnore
-    | lValExpr '.' id                                     #LValMember
+      lValExpr '.' id                                     #LValMember
     | lValExpr '.' '[' identifierCommaList1 ']'           #LValMemberArray
     | lValExpr '[' (slice (',' slice)*)? ']'              #LValArrayIndex
     | '[' lValExpr (',' lValExpr)* ']'                    #LValArray
@@ -152,6 +151,7 @@ lValExpr:
     | lValExpr '.' '<' identifierCommaList1 '>'           #LValMemberBits
     | '<' lValExpr (',' lValExpr)* '>'                    #LValSlice
     | qualId                                              #LValVarRef
+    |  '-'                                                #LValIgnore
     ;
 
 // -- EXPRESSIONS ---------------------------------------------------
@@ -163,11 +163,11 @@ expr:
     | BIN_LIT                                             #ExprLitBin
     | MASK_LIT                                            #ExprLitMask
     | STRING_LIT                                          #ExprLitString
-    | qualId                                              #ExprVarRef
     | qualId '(' exprCommaList0 ')'                       #ExprCall
+    | qualId                                              #ExprVarRef
     | '(' expr ')'                                        #ExprParen
     | '(' exprCommaList1 ')'                              #ExprTuple
-    | operator=('-' | '!') expr                           #ExprUnOp
+    | operator=('-' | '!' | 'NOT') expr                   #ExprUnOp
     | type 'UNKNOWN'                                      #ExprUnknown
     | type 'IMPLEMENTATION_DEFINED' STRING_LIT?           #ExprImpDef
     | expr '.' id                                         #ExprMember
@@ -206,7 +206,7 @@ sliceExpr:
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++') operand2=expr  #SliceExprBinOp
         | 'if' test=expr 'then' thenExpr=expr
           exprElsIf*
-          'else' elseExpr=expr                                #SliceExprIf
+          'else' elseExpr=expr                            #SliceExprIf
     ;
 
 slice:
@@ -244,12 +244,14 @@ qualId:
     | 'AArch64' '.' id           #QualIdAArch64
     ;
 
+idWithDots: id ('.' (id|NAT_LIT))* ;
+
 id: IDENTIFIER | 'register' | 'enumeration';
 
 //INDENT: 'IND' ;
 //DEDENT: 'DED' ;
 
-SEE_TOK : 'SEE' ~';'+ ;
+
 IDENTIFIER : [A-Za-z_][A-Za-z0-9_]* ;
 NAT_LIT    : [0-9]+ ;
 HEX_LIT    : '0x' [0-9a-fA-F]+ ;
@@ -257,7 +259,7 @@ BIN_LIT    : '\'' [01 ]* '\'' ;
 MASK_LIT   : '\'' [01x ]* '\'' ;
 REAL_LIT   : [0-9]+ '.' [0-9]+ ;
 STRING_LIT : '"' ~'"'* '"' ;
-
+SEE_TOK : 'SEE ' ~';'+ ;
 
 
 COMMENT : '/*' (COMMENT|.)*? '*/' -> skip ;

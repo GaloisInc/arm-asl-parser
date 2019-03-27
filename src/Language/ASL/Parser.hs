@@ -64,7 +64,7 @@ parseAtom = P.choice $ [ parseIdentifierAtom
   where
     parseIdentifierAtom = do
       l <- P.choice [ P.letter, P.char '_' ]
-      r <- P.many $ P.choice [ P.alphaNum, P.char '_' ]
+      r <- P.many $ P.choice [ P.alphaNum, P.char '_', P.char '.' ]
       return (AtomId $ pack (l:r))
 
     parseStringAtom :: Parser Atom
@@ -147,11 +147,12 @@ parseInsts s = nameArgs s >>= \case
 
 parseInst :: SExprA -> SExprAParser Syn.Instruction
 parseInst s = nameArgs s >>= \case
-  ("Instruction", [name, encodings, impl]) -> do
+  ("Instruction", [name, encodings, postDecode, impl]) -> do
     name' <- parseId name
     encodings' <- parseList parseInstEncoding encodings
-    impl' <- parseStmtBlock impl
-    return $ Syn.Instruction name' encodings' impl'
+    postDecode' <- listMaybeToList <$> parseMaybe parseStmtBlock postDecode
+    impl' <- listMaybeToList <$> parseMaybe parseStmtBlock impl
+    return $ Syn.Instruction name' encodings' postDecode' impl'
   _ -> unexpectedForm "parseInst" s
 
 parseInstEncoding :: SExprA -> SExprAParser Syn.InstructionEncoding
@@ -162,6 +163,7 @@ parseInstEncoding s = nameArgs s >>= \case
       "A32" -> return Syn.A32
       "T32" -> return Syn.T32
       "T16" -> return Syn.T16
+      "A64" -> return Syn.A64
       _ -> unexpectedForm "parseInstEncoding" s
 
     flds' <- parseList parseInstField flds
@@ -536,9 +538,10 @@ parseExpr s = errCtx "expression" s $ nameArgs s >>= \case
   ("ExprUnOp", [op, e]) -> do
     e' <- parseExpr e
     op' <- parseStringLit op >>= \case
-      "!" -> return Syn.UnOpNot
-      "-" -> return Syn.UnOpNeg
-      _   -> unexpectedForm "parseExpr" s
+      "NOT" -> return Syn.UnOpNot
+      "!"   -> return Syn.UnOpNot
+      "-"   -> return Syn.UnOpNeg
+      _     -> unexpectedForm "parseExpr" s
     return $ Syn.ExprUnOp op' e'
 
   ("ExprBinOp", [op, e1, e2]) -> do

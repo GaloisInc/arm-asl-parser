@@ -135,16 +135,16 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     @Override
     public SExp visitInstruction(ASLParser.InstructionContext ctx) {
         return sexp("Instruction",
-                    id(ctx.id()),
+                    id(ctx.idWithDots()),
                     list(subs(ctx.encoding())),
-                    maybe(ctx.postdecode()),
-                    sub(ctx.indentedBlock()));
+                    maybe(ctx.postDecodeBlock),
+                    maybe(ctx.executeBlock));
     }
 
     @Override
     public SExp visitEncoding(ASLParser.EncodingContext ctx) {
         return sexp("InstructionEncoding",
-                    id(ctx.id()),
+                    id(ctx.idWithDots()),
                     atom(ctx.instructionSet.getText()),
                     list(subs(ctx.instructionField())),
                     atom(ctx.opcode.getText()),
