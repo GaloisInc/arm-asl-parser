@@ -6,18 +6,22 @@ tokens { INDENT, DEDENT }
 
 instructions: instruction* EOF ;
 
-instruction: '__instruction' id INDENT encoding+ '__execute' indentedBlock DEDENT ;
+instruction: '__instruction' id INDENT encoding+ postdecode? '__execute' indentedBlock DEDENT ;
 
 encoding:
     '__encoding' id
     INDENT
-        '__instruction_set' instructionSet=('A32'|'T32'|'T16')
+        '__instruction_set' instructionSet=('A64'|'A32'|'T32'|'T16')
         instructionField*
         '__opcode' opcode=(MASK_LIT|BIN_LIT)
         '__guard' expr
         instrUnpredictableUnless*
         '__decode' (decode=indentedBlock)?
     DEDENT;
+
+
+postdecode:
+    '__postdecode' indentedBlock;
 
 instructionField: '__field' id begin=NAT_LIT '+:' len=NAT_LIT ;
 instrUnpredictableUnless: '__unpredictable_unless' idx=NAT_LIT '==' bin=BIN_LIT ;

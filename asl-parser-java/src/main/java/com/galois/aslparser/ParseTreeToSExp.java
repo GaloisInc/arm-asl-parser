@@ -137,6 +137,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("Instruction",
                     id(ctx.id()),
                     list(subs(ctx.encoding())),
+                    maybe(ctx.postdecode()),
                     sub(ctx.indentedBlock()));
     }
 
