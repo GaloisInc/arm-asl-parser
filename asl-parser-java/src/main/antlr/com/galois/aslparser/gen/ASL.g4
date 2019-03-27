@@ -246,7 +246,7 @@ qualId:
 
 idWithDots: id ('.' (id|NAT_LIT))* ;
 
-id: IDENTIFIER | 'register' | 'enumeration';
+id: IDENTIFIER | 'register' | 'enumeration' | 'NOT';
 
 //INDENT: 'IND' ;
 //DEDENT: 'DED' ;
