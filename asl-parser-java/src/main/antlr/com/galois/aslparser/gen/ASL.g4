@@ -90,6 +90,11 @@ blockOrEmbed1:
     | stmt+
     ;
 
+ifEmbed:
+      INDENT stmt* DEDENT
+    | stmt
+    ;
+
 stmt:
       type identifierCommaList0 ';'                       #StmtVarsDecl
     | symDecl '=' expr ';'                                #StmtVarDeclInit
@@ -100,9 +105,9 @@ stmt:
     | 'assert' expr ';'                                   #StmtAssert
     | 'UNPREDICTABLE' ';'                                 #StmtUnpredictable
     | 'IMPLEMENTATION_DEFINED' STRING_LIT ';'             #StmtImpDef
-    | 'if' test=expr 'then' thenExpr=blockOrEmbed1
+    | 'if' test=expr 'then' thenExpr=ifEmbed
       (stmtElsIf)*
-      ('else' elseExpr=blockOrEmbed1)?                    #StmtIf
+      ('else' elseExpr=ifEmbed)?                          #StmtIf
     | 'case' expr 'of' INDENT caseAlt+ DEDENT             #StmtCase
     | 'for' id '='
         begin=expr direction=('to'|'downto') end=expr
@@ -117,7 +122,7 @@ stmt:
     | 'enumeration' id '{' identifierCommaList0 '}' ';'   #StmtDefEnum
     ;
 
-stmtElsIf:'elsif' expr 'then' blockOrEmbed1 ;
+stmtElsIf:'elsif' expr 'then' ifEmbed ;
 
 catchAlt:
       'when' expr indentedBlock                           #CatchAltWhen

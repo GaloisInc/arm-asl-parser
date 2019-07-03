@@ -86,6 +86,11 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
+    public SExp visitIfEmbed(ASLParser.IfEmbedContext ctx) {
+        return sexp("StmtBlock", list(subs(ctx.stmt())));
+    }
+
+    @Override
     public SExp visitReturnType(ASLParser.ReturnTypeContext ctx) {
         return sexp("ReturnType", list(subs(ctx.type())));
     }
@@ -339,7 +344,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtElsIf(ASLParser.StmtElsIfContext ctx) {
-        return sexp("StmtElsIf", sub(ctx.expr()), sub(ctx.blockOrEmbed1()));
+        return sexp("StmtElsIf", sub(ctx.expr()), sub(ctx.ifEmbed()));
     }
 
     @Override
