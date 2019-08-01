@@ -293,7 +293,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtVarsDecl(ASLParser.StmtVarsDeclContext ctx) {
-        return sexp("StmtVarsDecl", sub(ctx.identifierCommaList0()), sub(ctx.type()));
+        return sexp("StmtVarsDecl", sub(ctx.identifierCommaList1()), sub(ctx.type()));
     }
 
     @Override

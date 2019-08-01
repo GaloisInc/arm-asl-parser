@@ -96,7 +96,7 @@ ifEmbed:
     ;
 
 stmt:
-      type identifierCommaList0 ';'                       #StmtVarsDecl
+      type identifierCommaList1 ';'                       #StmtVarsDecl
     | symDecl '=' expr ';'                                #StmtVarDeclInit
     | 'constant' symDecl '=' expr ';'                     #StmtConstDecl
     | lValExpr '=' expr ';'                               #StmtAssign
