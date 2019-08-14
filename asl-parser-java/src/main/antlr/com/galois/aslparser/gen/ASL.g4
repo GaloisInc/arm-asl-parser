@@ -172,10 +172,10 @@ expr:
     | qualId                                              #ExprVarRef
     | '(' expr ')'                                        #ExprParen
     | '(' exprCommaList1 ')'                              #ExprTuple
+    | expr '.' id                                         #ExprMember
     | operator=('-' | '!' | 'NOT') expr                   #ExprUnOp
     | type 'UNKNOWN'                                      #ExprUnknown
     | type 'IMPLEMENTATION_DEFINED' STRING_LIT?           #ExprImpDef
-    | expr '.' id                                         #ExprMember
     | expr '.' '[' identifierCommaList1 ']'               #ExprMembers
     | expr '[' sliceCommaList0 ']'                        #ExprIndex
     | expr 'IN' set                                       #ExprInSet
