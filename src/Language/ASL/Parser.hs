@@ -100,8 +100,8 @@ parseAtom = P.choice $ [ parseIdentifierAtom
     parseBits bs = parseBit <$> (filter (`elem` ['0', '1']) bs)
 
     parseMaskBit b = case b of
-      '0' -> Syn.MaskBitSet
-      '1' -> Syn.MaskBitUnset
+      '0' -> Syn.MaskBitUnset
+      '1' -> Syn.MaskBitSet
       'x' -> Syn.MaskBitEither
       _   -> error "invalid mask bit"
     parseMaskBits bs = parseMaskBit <$> (filter (`elem` ['0', '1', 'x']) bs)
