@@ -182,8 +182,8 @@ expr:
     | expr 'IN' MASK_LIT                                  #ExprInMask
     | expr '<' sliceCommaList1 '>'                        #ExprSlice
     | operand1=expr operator='^' operand2=expr            #ExprBinOp
-    | operand1=expr operator=('*' | '/') operand2=expr    #ExprBinOp
     | operand1=expr operator=('+' | '-') operand2=expr    #ExprBinOp
+    | operand1=expr operator=('*' | '/') operand2=expr    #ExprBinOp
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++' | ':') operand2=expr  #ExprBinOp
     | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr #ExprBinOp
     | operand1=expr operator=( '&&' | '||' )  operand2=expr   #ExprBinOp
@@ -206,8 +206,8 @@ sliceExpr:
     | operator=('-' | '!') expr                           #SliceExprUnOp
     | expr '.' id                                         #SliceExprMember
     | operand1=expr operator='^' operand2=expr            #SliceExprBinOp
-    | operand1=expr operator=('*' | '/') operand2=expr    #SliceExprBinOp
     | operand1=expr operator=('+' | '-') operand2=expr    #SliceExprBinOp
+    | operand1=expr operator=('*' | '/') operand2=expr    #SliceExprBinOp
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++') operand2=expr  #SliceExprBinOp
         | 'if' test=expr 'then' thenExpr=expr
           exprElsIf*
