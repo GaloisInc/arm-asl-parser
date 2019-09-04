@@ -575,7 +575,9 @@ parseExpr s = errCtx "expression" s $ nameArgs s >>= \case
     set' <- parseSet set
     return $ Syn.ExprInSet e' set'
 
-  ("ExprUnknown", []) -> return Syn.ExprUnknown
+  ("ExprUnknown", [t]) -> do
+    t' <- parseType t
+    return $ Syn.ExprUnknown t'
 
   ("ExprTuple", [es]) -> Syn.ExprTuple <$> parseList parseExpr es
   ("ExprIf", [test, thn, elsifs, els]) -> do

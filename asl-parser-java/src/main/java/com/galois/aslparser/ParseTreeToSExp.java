@@ -606,7 +606,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitExprUnknown(ASLParser.ExprUnknownContext ctx) {
-        return sexp("ExprUnknown");
+        return sexp("ExprUnknown", sub (ctx.type()));
     }
 
     @Override

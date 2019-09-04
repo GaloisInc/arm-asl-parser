@@ -172,7 +172,7 @@ data Expr =
   | ExprMemberBits Expr [Identifier]
   | ExprCall QualifiedIdentifier [Expr]
   | ExprInSet Expr [SetElement]
-  | ExprUnknown
+  | ExprUnknown Type
   | ExprTuple [Expr]
   | ExprIf {- test, result -} [(Expr, Expr)]
            {- else -}Expr
