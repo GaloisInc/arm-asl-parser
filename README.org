@@ -1,0 +1,59 @@
+* Overview
+
+This repository implements a parser for the ARM Semantics Language (ASL), which is a domain-specific language for describing the semantics of ARM instructions [fn:asl-description].  The parser is written in Java using ANTLR; the Java tool dumps the parsed AST in an s-expression format.  The included Haskell library (asl-parser) parses the s-expression format into a native Haskell ADT.
+
+The ASL is extracted from the official XML specifications from ARM [fn:arm-specs] using a set of tools [fn:mar_tools] developed by Alastair Reid.
+
+* Use
+
+#+BEGIN_SRC sh
+
+# First, extract the ASL from the XML specifications using mra_tools
+git clone git@github.com:alastairreid/mra_tools.git
+pushd mra_tools
+mkdir v8.5
+pushd v8.5
+wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/ARMv85A-SysReg-00bet9.tar.gz
+wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/A64_v85A_ISA_xml_00bet9.tar.gz
+wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/AArch32_v85A_ISA_xml_00bet9.tar.gz
+
+tar xf A64_v85A_ISA_xml_00bet9.tar.gz
+tar xf AArch32_v85A_ISA_xml_00bet9.tar.gz
+tar xf ARMv85A-SysReg-00bet9.tar.gz
+
+tar xf ISA_v85A_A64_xml_00bet9.tar.gz
+tar xf ISA_v85A_AArch32_xml_00bet9.tar.gz
+popd
+
+make all
+
+DEFS=`pwd`/arch.asl
+INST=`pwd`/arch_instrs.asl
+
+popd
+
+# Clone this repository and use the ANTLR parser to turn ASL into s-expressions
+git clone git@github.com:GaloisInc/arm-asl-parser.git
+
+pushd arm-asl-parser
+pushd asl-parser-java
+./gradlew run -q --args="defs $DEFS" > ../arch_defs.sexpr
+./gradlew run -q --args="inst $INST" > ../arch_instrs.sexpr
+popd
+popd
+
+#+END_SRC
+
+* Building
+
+Currently, this repository only implements a library parsing the generated s-expression files.  Client code can use the library to process ASL.  See the module ~Language.ASL.Parser~ and the functions ~parseAslDefs~ and ~parseAslInsts~.  The mra_tools produce two files of interest: ~arch.asl~ and ~arch_instrs.asl~.  The former contains definitions of functions used to implement instruction semantics.  The latter contains the definitions of the semantics of each instruction in the architecture.
+
+#+BEGIN_SRC sh
+cabal v2-build asl-parser
+#+END_SRC
+
+* References
+
+[fn:mra_tools] https://github.com/alastairreid/mra_tools
+[fn:asl-description] https://alastairreid.github.io/dissecting-ARM-MRA/
+[fn:arm-specs] https://developer.arm.com/architectures/cpu-architecture/a-profile/exploration-tools
