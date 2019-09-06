@@ -2,7 +2,7 @@
 
 This repository implements a parser for the ARM Semantics Language (ASL), which is a domain-specific language for describing the semantics of ARM instructions [fn:asl-description].  The parser is written in Java using ANTLR; the Java tool dumps the parsed AST in an s-expression format.  The included Haskell library (asl-parser) parses the s-expression format into a native Haskell ADT.
 
-The ASL is extracted from the official XML specifications from ARM [fn:arm-specs] using a set of tools [fn:mar_tools] developed by Alastair Reid.
+The ASL is extracted from the official XML specifications from ARM [fn:arm-specs] using a set of tools [fn:mra_tools] developed by Alastair Reid.
 
 * Use
 
