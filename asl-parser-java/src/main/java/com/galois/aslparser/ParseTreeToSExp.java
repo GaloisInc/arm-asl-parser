@@ -45,6 +45,13 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
             return sexp("Just", sub(p));
     }
 
+    private SExp flag(String s, Token p){
+        if(p == null)
+            return sexp(s, atom("False"));
+        else
+            return sexp(s, atom("True"));
+    }
+
     private SExp stringLit(TerminalNode string_lit) {
         return atom(string_lit.getText());
     }
@@ -143,7 +150,8 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
                     id(ctx.idWithDots()),
                     list(subs(ctx.encoding())),
                     maybe(ctx.postDecodeBlock),
-                    maybe(ctx.executeBlock));
+                    maybe(ctx.executeBlock),
+                    flag("Conditional",ctx.conditional));
     }
 
     @Override

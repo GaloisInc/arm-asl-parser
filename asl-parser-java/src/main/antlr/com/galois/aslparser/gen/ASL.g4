@@ -9,7 +9,7 @@ instructions: instruction* EOF ;
 instruction: '__instruction' idWithDots
     INDENT encoding+
            ('__postdecode' postDecodeBlock=indentedBlock?)?
-           '__execute'     executeBlock=indentedBlock?
+           '__execute' conditional='__conditional'? executeBlock=indentedBlock?
     DEDENT ;
 
 encoding:

@@ -106,7 +106,6 @@ parseAtom = P.choice $ [ parseIdentifierAtom
       _   -> error "invalid mask bit"
     parseMaskBits bs = parseMaskBit <$> (filter (`elem` ['0', '1', 'x']) bs)
 
-
 type SExprA = WellFormedSExpr Atom
 
 sexprParser :: SExprParser Atom (SExprA)
@@ -147,13 +146,21 @@ parseInsts s = nameArgs s >>= \case
 
 parseInst :: SExprA -> SExprAParser Syn.Instruction
 parseInst s = nameArgs s >>= \case
-  ("Instruction", [name, encodings, postDecode, impl]) -> do
+  ("Instruction", [name, encodings, postDecode, impl, conditional]) -> do
     name' <- parseId name
     encodings' <- parseList parseInstEncoding encodings
     postDecode' <- listMaybeToList <$> parseMaybe parseStmtBlock postDecode
     impl' <- listMaybeToList <$> parseMaybe parseStmtBlock impl
-    return $ Syn.Instruction name' encodings' postDecode' impl'
+    conditional' <- parseConditional conditional
+    return $ Syn.Instruction name' encodings' postDecode' impl' conditional'
   _ -> unexpectedForm "parseInst" s
+
+parseConditional :: SExprA -> SExprAParser Bool
+parseConditional s = nameArgs s >>= \case
+  ("Conditional", [b]) -> do
+    b' <- parseBoolLit b
+    return $ b'
+  _ -> unexpectedForm "parseConditional" s
 
 parseInstEncoding :: SExprA -> SExprAParser Syn.InstructionEncoding
 parseInstEncoding s = nameArgs s >>= \case
@@ -749,6 +756,11 @@ parseStringLit = \case
   WFSAtom (AtomString str) -> return str
   k                        -> unexpectedForm "parseStringLit" k
 
+parseBoolLit :: SExprA -> SExprAParser Bool
+parseBoolLit = \case
+  WFSAtom (AtomId "True") -> return True
+  WFSAtom (AtomId "False") -> return False
+  k                    -> unexpectedForm "parseBoolLit" k
 
 parseRealLit :: SExprA -> SExprAParser (Integer, Integer)
 parseRealLit = \case

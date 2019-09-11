@@ -27,10 +27,11 @@ type Mask = [MaskBit]
 -- Instructions -----------------------------------------------------
 
 data Instruction =
-  Instruction { instName       :: Text
-              , instEncodings  :: [InstructionEncoding]
-              , instPostDecode :: [Stmt]
-              , instExecute    :: [Stmt]
+  Instruction { instName        :: Text
+              , instEncodings   :: [InstructionEncoding]
+              , instPostDecode  :: [Stmt]
+              , instExecute     :: [Stmt]
+              , instConditional :: Bool
               }
   deriving(Show, Eq)
 
