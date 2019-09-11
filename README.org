@@ -25,7 +25,7 @@ tar xf ISA_v85A_A64_xml_00bet9.tar.gz
 tar xf ISA_v85A_AArch32_xml_00bet9.tar.gz
 popd
 
-make all
+make all VERSION=00bet9
 
 DEFS=`pwd`/arch.asl
 INST=`pwd`/arch_instrs.asl
