@@ -29,6 +29,7 @@ make all VERSION=00bet9
 
 DEFS=`pwd`/arch.asl
 INST=`pwd`/arch_instrs.asl
+REGS=`pdf`/regs.asl
 
 popd
 
@@ -39,6 +40,7 @@ pushd arm-asl-parser
 pushd asl-parser-java
 ./gradlew run -q --args="defs $DEFS" > ../arch_defs.sexpr
 ./gradlew run -q --args="inst $INST" > ../arch_instrs.sexpr
+./gradlew run -q --args="regs $REGS" > ../arch_regs.sexpr
 popd
 popd
 
@@ -46,7 +48,7 @@ popd
 
 * Building
 
-Currently, this repository only implements a library parsing the generated s-expression files.  Client code can use the library to process ASL.  See the module ~Language.ASL.Parser~ and the functions ~parseAslDefs~ and ~parseAslInsts~.  The mra_tools produce two files of interest: ~arch.asl~ and ~arch_instrs.asl~.  The former contains definitions of functions used to implement instruction semantics.  The latter contains the definitions of the semantics of each instruction in the architecture.
+Currently, this repository only implements a library parsing the generated s-expression files.  Client code can use the library to process ASL.  See the module ~Language.ASL.Parser~ and the functions ~parseAslDefs~, ~parseAslInsts~ and ~parseAslRegs~.  The mra_tools produce three files of interest: ~arch.asl~, ~arch_instrs.asl~ and ~regs.asl~.  The first contains definitions of functions used to implement instruction semantics.  The second contains the definitions of the semantics of each instruction in the architecture. The third contains definitions for the registers used in other two.
 
 #+BEGIN_SRC sh
 cabal v2-build asl-parser

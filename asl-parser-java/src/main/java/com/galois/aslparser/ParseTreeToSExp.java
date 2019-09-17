@@ -142,6 +142,62 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
         return sexp("AslDefinitions", subs(ctx.definition()));
     }
 
+// -- REGISTERS -----------------------------------------------------
+
+    @Override
+    public SExp visitRegister(ASLParser.RegisterContext ctx){
+        return sexp("Register",
+                    id(ctx.id()),
+                    nat(ctx.NAT_LIT()),
+                    sub(ctx.registerFieldCommaList()));
+    }
+
+    @Override
+    public SExp visitRegisterField(ASLParser.RegisterFieldContext ctx){
+        SExp regFieldId;
+
+        if(ctx.id() == null){
+            regFieldId = atom("Nothing");
+        } else {
+            regFieldId = sexp("Just", id(ctx.id()));
+        }
+
+        return sexp("RegisterField",
+                    regFieldId,
+                    nat(ctx.lo),
+                    nat(ctx.hi));
+    }
+
+    @Override
+    public SExp visitRegisterFieldCommaList(ASLParser.RegisterFieldCommaListContext ctx) {
+        return list(subs(ctx.registerField()));
+    }
+
+    @Override
+    public SExp visitArrayRegister(ASLParser.ArrayRegisterContext ctx){
+        return sexp("RegisterArray",
+                    nat(ctx.lo),
+                    nat(ctx.hi),
+                    sub(ctx.register()));
+    }
+
+    @Override
+    public SExp visitRegisters(ASLParser.RegistersContext ctx) {
+        return sexp("AslRegisters", subs(ctx.registerDefinition()));
+    }
+
+    @Override
+    public SExp visitRegDefBasic(ASLParser.RegDefBasicContext ctx) {
+        return sexp("RegisterDefBasic", sub(ctx.register()));
+    }
+
+    @Override
+    public SExp visitRegDefArray(ASLParser.RegDefArrayContext ctx) {
+        return sexp("RegisterDefArray", sub(ctx.arrayRegister()));
+    }
+
+
+
 // -- INSTRUCTIONS --------------------------------------------------
 
     @Override

@@ -24,6 +24,30 @@ data MaskBit = MaskBitSet | MaskBitUnset | MaskBitEither
 type BitVector = [Bool]
 type Mask = [MaskBit]
 
+-- System Registers -------------------------------------------------
+
+data Register =
+  Register { regName   :: Text
+           , regLength :: Integer
+           , regFields :: [RegisterField]
+           }
+
+data RegisterField =
+  RegisterField { regFieldName :: Maybe Text
+                , regFieldLo   :: Integer
+                , regFieldHi   :: Integer
+                }
+
+data RegisterArray =
+  RegisterArray { regIndexMin :: Integer
+                , regIndexMax :: Integer
+                , regDef      :: Register
+                }
+
+data RegisterDefinition =
+    RegisterDefSingle Register
+  | RegisterDefArray RegisterArray
+
 -- Instructions -----------------------------------------------------
 
 data Instruction =

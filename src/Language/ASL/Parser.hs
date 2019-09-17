@@ -3,8 +3,10 @@
 module Language.ASL.Parser
 ( parseAslDefs
 , parseAslInsts
+, parseAslRegs
 , parseAslDefsFile
 , parseAslInstsFile
+, parseAslRegsFile
 ) where
 
 import Data.Text(Text, pack, unpack)
@@ -138,6 +140,49 @@ nameArgs (WFSList (nmA:argsA)) = do
   nm <- parseId nmA
   return (nm, argsA)
 nameArgs s = unexpectedForm "nameArgs" s
+
+
+parseRegs :: SExprA -> SExprAParser [Syn.RegisterDefinition]
+parseRegs s = nameArgs s >>= \case
+  ("AslRegisters", regs) -> mapM parseRegDef regs
+  _ -> throwError "parseRegs failed"
+
+parseRegDef :: SExprA -> SExprAParser Syn.RegisterDefinition
+parseRegDef s = nameArgs s >>= \case
+  ("RegisterDefBasic", [reg]) -> do
+    reg' <- parseReg reg
+    return $ Syn.RegisterDefSingle reg'
+  ("RegisterDefArray", [areg]) -> do
+    areg' <- parseRegArray areg
+    return $ Syn.RegisterDefArray areg'
+  _ -> unexpectedForm "parseRegDef" s
+
+parseReg :: SExprA -> SExprAParser Syn.Register
+parseReg s = nameArgs s >>= \case
+  ("Register", [name, length, fields]) -> do
+    name' <- parseId name
+    length' <- parseNatLit length
+    fields' <- parseList parseRegisterField fields
+    return $ Syn.Register name' length' fields'
+  _ -> unexpectedForm "parseReg" s
+
+parseRegArray :: SExprA -> SExprAParser Syn.RegisterArray
+parseRegArray s = nameArgs s >>= \case
+  ("RegisterArray", [min, max, reg]) -> do
+    min' <- parseNatLit min
+    max' <- parseNatLit max
+    reg' <- parseReg reg
+    return $ Syn.RegisterArray min' max' reg'
+  _ -> unexpectedForm "parseRegArray" s
+
+parseRegisterField :: SExprA -> SExprAParser Syn.RegisterField
+parseRegisterField s = nameArgs s >>= \case
+  ("RegisterField", [name, lo, hi]) -> do
+    name' <- parseMaybe parseId name
+    lo' <- parseNatLit lo
+    hi' <- parseNatLit hi
+    return $ Syn.RegisterField name' lo' hi'
+  _ -> unexpectedForm "parseRegField" s
 
 parseInsts :: SExprA -> SExprAParser [Syn.Instruction]
 parseInsts s = nameArgs s >>= \case
@@ -790,6 +835,11 @@ parseAslInsts t = do
   insts <- parseSExprA t
   runExcept (parseInsts insts)
 
+parseAslRegs :: Text -> Either Text [Syn.RegisterDefinition]
+parseAslRegs t = do
+  regs <- parseSExprA t
+  runExcept (parseRegs regs)
+
 parseAslDefsFile :: FilePath -> IO (Either Text [Syn.Definition])
 parseAslDefsFile f = do
   t <- pack <$> readFile f
@@ -799,3 +849,8 @@ parseAslInstsFile :: FilePath -> IO (Either Text [Syn.Instruction])
 parseAslInstsFile f = do
   t <- pack <$> readFile f
   return $ parseAslInsts t
+
+parseAslRegsFile :: FilePath -> IO (Either Text [Syn.RegisterDefinition])
+parseAslRegsFile f = do
+  t <- pack <$> readFile f
+  return $ parseAslRegs t

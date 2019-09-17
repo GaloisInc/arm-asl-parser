@@ -2,6 +2,23 @@ grammar ASL;
 
 tokens { INDENT, DEDENT }
 
+// -- REGISTERS ----------------------------------------------
+
+registers: registerDefinition* EOF ;
+
+registerDefinition:
+      arrayRegister  #RegDefArray
+    | register       #RegDefBasic
+    ;
+
+register: '__register' NAT_LIT '{' registerFieldCommaList '}' id ';' ;
+
+arrayRegister: 'array' '[' lo=NAT_LIT '..' hi=NAT_LIT ']' 'of' register ;
+
+registerField: hi=NAT_LIT ':' lo=NAT_LIT id? ;
+
+registerFieldCommaList: (registerField (',' registerField)*)? ;
+
 // -- INSTRUCTIONS --------------------------------------------------
 
 instructions: instruction* EOF ;
