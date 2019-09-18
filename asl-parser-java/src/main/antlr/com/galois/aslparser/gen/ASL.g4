@@ -59,8 +59,8 @@ definition:
     | returnType? qualId '(' symDeclCommaList ')' (indentedBlock | ';')  #DefCallable
     | returnType qualId indentedBlock                                    #DefGetter
     | returnType qualId '[' symDeclCommaList ']'  (indentedBlock | ';')  #DefGetter
-    | qualId ('[' (setterArg (',' setterArg)*)? ']')? '=' symDecl
-             (indentedBlock | ';')                                       #DefSetter
+    | qualId '[' setterArgCommaList ']' '=' symDecl (indentedBlock | ';') #DefSetter
+    | qualId '=' symDecl (indentedBlock | ';')                           #DefSetter            
     ;
 
 
@@ -68,6 +68,8 @@ setterArg:
       type '&' id                                                        #SetterRefArg
     | type id                                                            #SetterValArg
     ;
+
+setterArgCommaList: (setterArg (',' setterArg)*)? ;
 
 // -- TYPES ---------------------------------------------------------
 

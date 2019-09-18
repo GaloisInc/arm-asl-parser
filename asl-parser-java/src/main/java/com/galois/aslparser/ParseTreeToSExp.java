@@ -108,6 +108,11 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
+    public SExp visitSetterArgCommaList(ASLParser.SetterArgCommaListContext ctx) {
+        return list(subs(ctx.setterArg()));
+    }
+
+    @Override
     public SExp visitIdentifierCommaList0(ASLParser.IdentifierCommaList0Context ctx) {
         return list(ctx.id().stream().map(this::id).collect(Collectors.toList()));
     }
@@ -300,7 +305,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     public SExp visitDefSetter(ASLParser.DefSetterContext ctx) {
         return sexp("DefSetter",
                 sub(ctx.qualId()),
-                list(subs(ctx.setterArg())),
+                maybe(ctx.setterArgCommaList()),
                 sub(ctx.symDecl()),
                 maybe(ctx.indentedBlock()));
     }

@@ -304,14 +304,14 @@ parseDef d = errCtx "definition" d $ nameArgs d >>= \case
 
   ("DefGetter", [i,decls,rt,stmt]) -> do
     i' <- parseQualId i
-    decls' <- listMaybeToList <$> parseMaybe (parseList parseSymDecl) decls
+    decls' <- parseMaybe (parseList parseSymDecl) decls
     rt' <- parseReturnType rt
     stmt' <- listMaybeToList <$> parseMaybe parseStmtBlock stmt
     return $ Syn.DefGetter i' decls' rt' stmt'
 
   ("DefSetter", [i,a,d,stmt]) -> do
     i' <- parseQualId i
-    a' <- parseList parseSetterArg a
+    a' <- parseMaybe (parseList parseSetterArg) a
     d' <- parseSymDecl d
     stmt' <- listMaybeToList <$> parseMaybe parseStmtBlock stmt
     return $ Syn.DefSetter i' a' d' stmt'

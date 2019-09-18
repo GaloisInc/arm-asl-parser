@@ -96,8 +96,8 @@ data Definition =
                         , callableRets ::  [Type]
                         , callableStmts :: [Stmt]
                         }
-  | DefGetter           QualifiedIdentifier [SymbolDecl] [Type] [Stmt]
-  | DefSetter           QualifiedIdentifier [SetterArg] SymbolDecl [Stmt]
+  | DefGetter           QualifiedIdentifier (Maybe [SymbolDecl]) [Type] [Stmt]
+  | DefSetter           QualifiedIdentifier (Maybe [SetterArg]) SymbolDecl [Stmt]
   deriving(Show, Eq)
 
 data SetterArg = SetterArg SymbolDecl Bool
