@@ -624,8 +624,8 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     @Override
     public SExp visitExprImpDef(ASLParser.ExprImpDefContext ctx) {
         return ctx.STRING_LIT() == null ?
-            sexp("ExprImpDef", atom("Nothing"))
-          : sexp("ExprImpDef", sexp("Just", stringLit(ctx.STRING_LIT())));
+            sexp("ExprImpDef", atom("Nothing"), sub(ctx.type()))
+          : sexp("ExprImpDef", sexp("Just", stringLit(ctx.STRING_LIT())), sub(ctx.type()));
     }
 
     @Override

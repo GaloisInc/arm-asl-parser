@@ -187,7 +187,7 @@ data Expr =
   | ExprLitBin BitVector
   | ExprLitMask Mask
   | ExprVarRef QualifiedIdentifier
-  | ExprImpDef (Maybe Text)
+  | ExprImpDef (Maybe Text) Type
   | ExprSlice Expr [Slice]
   | ExprIndex Expr [Slice]
   | ExprUnOp UnOp Expr

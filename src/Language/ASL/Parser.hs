@@ -576,7 +576,10 @@ parseExpr s = errCtx "expression" s $ nameArgs s >>= \case
   ("ExprLitBin", [n]) -> Syn.ExprLitBin <$> parseBinLit n
   ("ExprLitMask", [n]) -> Syn.ExprLitMask <$> parseMaskLit n
   ("ExprVarRef", [n]) -> Syn.ExprVarRef <$> parseQualId n
-  ("ExprImpDef", [s])  -> Syn.ExprImpDef <$> parseMaybe parseStringLit s
+  ("ExprImpDef", [s, t])  -> do
+    s' <- parseMaybe parseStringLit s
+    t' <- parseType t
+    return $ Syn.ExprImpDef s' t'
   ("ExprSlice", [e, sl]) -> do
     e' <- parseExpr e
     sl' <- parseList parseSlice sl
