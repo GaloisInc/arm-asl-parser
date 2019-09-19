@@ -196,6 +196,7 @@ expr:
     | type 'UNKNOWN'                                      #ExprUnknown
     | type 'IMPLEMENTATION_DEFINED' STRING_LIT?           #ExprImpDef
     | expr '.' '[' identifierCommaList1 ']'               #ExprMembers
+    | expr '.' '<' identifierCommaList1 '>'               #ExprMemberBits
     | expr '[' sliceCommaList0 ']'                        #ExprIndex
     | expr 'IN' set                                       #ExprInSet
     | expr 'IN' MASK_LIT                                  #ExprInMask
@@ -206,7 +207,6 @@ expr:
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++' | ':') operand2=expr  #ExprBinOp
     | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr #ExprBinOp
     | operand1=expr operator=( '&&' | '||' )  operand2=expr   #ExprBinOp
-    | expr '.' '<' identifierCommaList1 '>'               #ExprMemberBits
     | 'if' test=expr 'then' thenExpr=expr
       exprElsIf*
       'else' elseExpr=expr                                #ExprIf
