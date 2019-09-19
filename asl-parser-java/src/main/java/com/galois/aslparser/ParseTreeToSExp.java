@@ -479,7 +479,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     @Override
     public SExp visitStmtTry(ASLParser.StmtTryContext ctx) {
         return sexp("StmtTry",
-                sub(ctx.id()),
+                id(ctx.id()),
                 sub(ctx.indentedBlock()),
                 list(subs(ctx.catchAlt())));
     }

@@ -464,7 +464,7 @@ parseStmt s = errCtx "statement" s $ nameArgs s >>= \case
     s' <- parseStringLit s
     return $ Syn.StmtSeeString s'
 
-  ("StmtTry", [ss, i, ca]) -> do
+  ("StmtTry", [i, ss, ca]) -> do
     i' <- parseId i
     ss' <- parseStmtBlock ss
     ca' <- parseList parseCatchAlt ca
