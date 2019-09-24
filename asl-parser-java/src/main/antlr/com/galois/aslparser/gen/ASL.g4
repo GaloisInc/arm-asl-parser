@@ -220,6 +220,7 @@ expr:
 sliceExpr:
       NAT_LIT                                             #SliceExprLitNat
     | HEX_LIT                                             #SliceExprLitHex
+    | '(' sliceExpr ')'                                   #SliceExprParen
     | qualId                                              #SliceExprVarRef
     | qualId '(' exprCommaList0 ')'                       #SliceExprCall
     | operator=('-' | '!') expr                           #SliceExprUnOp

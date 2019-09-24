@@ -720,6 +720,11 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
+    public SExp visitSliceExprParen(ASLParser.SliceExprParenContext ctx) {
+        return sub(ctx.sliceExpr());
+    }
+
+    @Override
     public SExp visitSliceExprCall(ASLParser.SliceExprCallContext ctx) {
         return sexp("ExprCall", sub(ctx.qualId()), sub(ctx.exprCommaList0()));
     }
