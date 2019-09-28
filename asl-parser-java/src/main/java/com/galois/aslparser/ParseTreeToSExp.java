@@ -29,6 +29,14 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     private SExp list(List<SExp> pt) {
         return sexp("list", pt);
     }
+    
+    private SExp singleton(SExp pt) {
+        return sexp("list", pt);
+    }  
+    
+    private SExp empty() {
+        return sexp("list", Collections.emptyList());
+    }    
 
     private SExp nat(TerminalNode term) {
         return atom(term.getText());
@@ -78,23 +86,32 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
     }
 
     @Override
+    public SExp visitBlockIndent(ASLParser.BlockIndentContext ctx) {
+        return sub(ctx.indentedBlock());
+    }    
+
+    @Override
+    public SExp visitBlockInline(ASLParser.BlockInlineContext ctx) {
+        List<SExp> inlines = subs(ctx.inlineStmt());
+        inlines.add(sub(ctx.stmt()));
+        return sexp("StmtBlock", list(inlines));
+    }
+    
+    @Override
     public SExp visitBlockOrEmbed0(ASLParser.BlockOrEmbed0Context ctx) {
-        return sexp("StmtBlock", list(subs(ctx.stmt())));
+        return ctx.blockOrEmbed1() == null ?
+            sexp("StmtBlock", empty())
+          : sub(ctx.blockOrEmbed1());
+    }
+
+    @Override
+    public SExp visitStmtsInline(ASLParser.StmtsInlineContext ctx) {
+        return sub(ctx.inlineStmt());
     }
 
     @Override
     public SExp visitExprParen(ASLParser.ExprParenContext ctx) {
         return sub(ctx.expr());
-    }
-
-    @Override
-    public SExp visitBlockOrEmbed1(ASLParser.BlockOrEmbed1Context ctx) {
-        return sexp("StmtBlock", list(subs(ctx.stmt())));
-    }
-
-    @Override
-    public SExp visitIfEmbed(ASLParser.IfEmbedContext ctx) {
-        return sexp("StmtBlock", list(subs(ctx.stmt())));
     }
 
     @Override
@@ -413,7 +430,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitStmtElsIf(ASLParser.StmtElsIfContext ctx) {
-        return sexp("StmtElsIf", sub(ctx.expr()), sub(ctx.ifEmbed()));
+        return sexp("StmtElsIf", sub(ctx.expr()), sub(ctx.blockOrEmbed1()));
     }
 
     @Override
@@ -486,12 +503,12 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitCatchAltWhen(ASLParser.CatchAltWhenContext ctx) {
-        return sexp("CatchWhen", sub(ctx.expr()), sub(ctx.indentedBlock()));
+        return sexp("CatchWhen", sub(ctx.expr()), sub(ctx.blockOrEmbed1()));
     }
 
     @Override
     public SExp visitCatchAltOtherwise(ASLParser.CatchAltOtherwiseContext ctx) {
-        return sexp("CatchOtherwise", sub(ctx.indentedBlock()));
+        return sexp("CatchOtherwise", sub(ctx.blockOrEmbed1()));
     }
 
     @Override

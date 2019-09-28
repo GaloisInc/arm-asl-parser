@@ -11,7 +11,7 @@ registerDefinition:
     | register       #RegDefBasic
     ;
 
-register: '__register' NAT_LIT '{' registerFieldCommaList '}' id ';' ;
+register: '__register' NAT_LIT '{' registerFieldCommaList '}' id SEMICOLON ;
 
 arrayRegister: 'array' '[' lo=NAT_LIT '..' hi=NAT_LIT ']' 'of' register ;
 
@@ -48,19 +48,22 @@ instrUnpredictableUnless: '__unpredictable_unless' idx=NAT_LIT '==' bin=BIN_LIT 
 definitions : definition* EOF ;
 
 definition:
-      '__builtin' 'type' id ';'                                          #DefTypeBuiltin
-    | 'type' id ';'                                                      #DefTypeAbstract
-    | 'type' id '=' type ';'                                             #DefTypeAlias
+      '__builtin' 'type' id SEMICOLON                                    #DefTypeBuiltin
+    | 'type' id SEMICOLON                                                #DefTypeAbstract
+    | 'type' id '=' type SEMICOLON                                       #DefTypeAlias
     | 'type' qualId     'is' '(' symDeclCommaList ')'                    #DefTypeStruct
-    | 'enumeration' id '{' identifierCommaList0 '}' ';'                  #DefTypeEnum
-    | type qualId ';'                                                    #DefVariable
-    | 'constant' type id '=' expr ';'                                    #DefConstant
-    | 'array' type id '[' ixType ']' ';'                                 #DefArray
-    | returnType? qualId '(' symDeclCommaList ')' (indentedBlock | ';')  #DefCallable
+    | 'enumeration' id '{' identifierCommaList0 '}' SEMICOLON            #DefTypeEnum
+    | type qualId SEMICOLON                                              #DefVariable
+    | 'constant' type id '=' expr SEMICOLON                              #DefConstant
+    | 'array' type id '[' ixType ']' SEMICOLON                           #DefArray
+    | returnType? qualId '(' symDeclCommaList ')'
+        (indentedBlock | SEMICOLON)                                      #DefCallable
     | returnType qualId indentedBlock                                    #DefGetter
-    | returnType qualId '[' symDeclCommaList ']'  (indentedBlock | ';')  #DefGetter
-    | qualId '[' setterArgCommaList ']' '=' symDecl (indentedBlock | ';') #DefSetter
-    | qualId '=' symDecl (indentedBlock | ';')                           #DefSetter            
+    | returnType qualId '[' symDeclCommaList ']'
+        (indentedBlock | SEMICOLON)                                      #DefGetter
+    | qualId '[' setterArgCommaList ']' '=' symDecl
+        (indentedBlock | SEMICOLON)                                      #DefSetter
+    | qualId '=' symDecl (indentedBlock | SEMICOLON)                     #DefSetter            
     ;
 
 
@@ -99,53 +102,51 @@ regField: slice (',' slice)* id ;
 
 indentedBlock: INDENT stmt* DEDENT ;
 
-blockOrEmbed0:
-      INDENT stmt* DEDENT
-    | stmt*
-    ;
+blockOrEmbed0: blockOrEmbed1? ;
 
 blockOrEmbed1:
-      INDENT stmt* DEDENT
-    | stmt+
+      (inlineStmt ';')* stmt              #BlockInline
+    | indentedBlock                                       #BlockIndent
     ;
 
-ifEmbed:
-      INDENT stmt* DEDENT
-    | stmt
-    ;
+SEMICOLON : ';' ENDLINE ;
 
 stmt:
-      type identifierCommaList1 ';'                       #StmtVarsDecl
-    | symDecl '=' expr ';'                                #StmtVarDeclInit
-    | 'constant' symDecl '=' expr ';'                     #StmtConstDecl
-    | lValExpr '=' expr ';'                               #StmtAssign
-    | qualId '(' exprCommaList0 ')' ';'                   #StmtCall
-    | 'return' expr? ';'                                  #StmtReturn
-    | 'assert' expr ';'                                   #StmtAssert
-    | 'UNPREDICTABLE' ';'                                 #StmtUnpredictable
-    | 'IMPLEMENTATION_DEFINED' STRING_LIT ';'             #StmtImpDef
-    | 'if' test=expr 'then' thenExpr=ifEmbed
+      inlineStmt (SEMICOLON | ';')                        #StmtsInline
+    | 'if' test=expr 'then' thenExpr=blockOrEmbed1
       (stmtElsIf)*
-      ('else' elseExpr=ifEmbed)?                          #StmtIf
+      ('else' elseExpr=blockOrEmbed1)?                    #StmtIf
     | 'case' expr 'of' INDENT caseAlt+ DEDENT             #StmtCase
     | 'for' id '='
         begin=expr direction=('to'|'downto') end=expr
         indentedBlock                                     #StmtFor
     | 'while' expr 'do' indentedBlock                     #StmtWhile
-    | 'repeat' indentedBlock 'until' expr ';'             #StmtRepeat
-    | 'throw' id ';'                                      #StmtThrow
-    | 'UNDEFINED' ';'                                     #StmtUndefined
-    | SEE_TOK ';'                                         #StmtSee
     | 'try' indentedBlock
-      'catch' id INDENT catchAlt+ DEDENT                  #StmtTry
-    | 'enumeration' id '{' identifierCommaList0 '}' ';'   #StmtDefEnum
+      'catch' id INDENT catchAlt+ DEDENT                  #StmtTry    
     ;
 
-stmtElsIf:'elsif' expr 'then' ifEmbed ;
+inlineStmt:
+      type identifierCommaList1                           #StmtVarsDecl
+    | symDecl '=' expr                                    #StmtVarDeclInit
+    | 'constant' symDecl '=' expr                         #StmtConstDecl
+    | lValExpr '=' expr                                   #StmtAssign
+    | qualId '(' exprCommaList0 ')'                       #StmtCall
+    | 'return' expr?                                      #StmtReturn
+    | 'assert' expr                                       #StmtAssert
+    | 'UNPREDICTABLE'                                     #StmtUnpredictable
+    | 'IMPLEMENTATION_DEFINED' STRING_LIT                 #StmtImpDef
+    | 'repeat' indentedBlock 'until' expr                 #StmtRepeat
+    | 'throw' id                                          #StmtThrow
+    | 'UNDEFINED'                                         #StmtUndefined
+    | SEE_TOK                                             #StmtSee
+    | 'enumeration' id '{' identifierCommaList0 '}'       #StmtDefEnum
+    ;
+
+stmtElsIf:'elsif' expr 'then' blockOrEmbed1 ;
 
 catchAlt:
-      'when' expr indentedBlock                           #CatchAltWhen
-    | 'otherwise' indentedBlock                           #CatchAltOtherwise
+      'when' expr blockOrEmbed1                           #CatchAltWhen
+    | 'otherwise' blockOrEmbed1                           #CatchAltOtherwise
     ;
 
 caseAlt:
@@ -284,9 +285,11 @@ BIN_LIT    : '\'' [01 ]* '\'' ;
 MASK_LIT   : '\'' [01x ]* '\'' ;
 REAL_LIT   : [0-9]+ '.' [0-9]+ ;
 STRING_LIT : '"' ~'"'* '"' ;
+
 SEE_TOK : 'SEE ' ~';'+ ;
 
-
 COMMENT : '/*' (COMMENT|.)*? '*/' -> skip ;
-LINE_COMMENT : '//' .*? '\n'      -> skip ;
+LINE_COMMENT : ' '* '//' .*? '\n'      -> skip ;
+ENDLINE : ' '* ('//' .*?)? '\n'          -> skip ;
+
 WS : [ \n\u000D\t]                -> skip ;
