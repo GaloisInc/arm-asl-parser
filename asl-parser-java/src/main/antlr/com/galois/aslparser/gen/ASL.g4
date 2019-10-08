@@ -105,7 +105,7 @@ indentedBlock: INDENT stmt* DEDENT ;
 blockOrEmbed0: blockOrEmbed1? ;
 
 blockOrEmbed1:
-      (inlineStmt ';')* stmt              #BlockInline
+      (inlineStmt ';')* stmt                              #BlockInline
     | indentedBlock                                       #BlockIndent
     ;
 
@@ -203,8 +203,8 @@ expr:
     | expr 'IN' MASK_LIT                                  #ExprInMask
     | expr '<' sliceCommaList1 '>'                        #ExprSlice
     | operand1=expr operator='^' operand2=expr            #ExprBinOp
-    | operand1=expr operator=('+' | '-') operand2=expr    #ExprBinOp
     | operand1=expr operator=('*' | '/') operand2=expr    #ExprBinOp
+    | operand1=expr operator=('-' | '+') operand2=expr    #ExprBinOp
     | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++' | ':') operand2=expr  #ExprBinOp
     | operand1=expr operator=('==' | '!=' | '>' | '>=' | '<'  | '<=') operand2=expr #ExprBinOp
     | operand1=expr operator=( '&&' | '||' )  operand2=expr   #ExprBinOp
@@ -213,7 +213,6 @@ expr:
       'else' elseExpr=expr                                #ExprIf
 
     ;
-
 
 // this is a kind of a hack to keep SliceRange from being parsed as a concat
 // which is necessary to preserve precedence rules - in this case we
@@ -224,12 +223,13 @@ sliceExpr:
     | '(' sliceExpr ')'                                   #SliceExprParen
     | qualId                                              #SliceExprVarRef
     | qualId '(' exprCommaList0 ')'                       #SliceExprCall
-    | operator=('-' | '!') expr                           #SliceExprUnOp
+    | operator=('-' | '!') operand=sliceExpr              #SliceExprUnOp
     | expr '.' id                                         #SliceExprMember
-    | operand1=expr operator='^' operand2=expr            #SliceExprBinOp
-    | operand1=expr operator=('+' | '-') operand2=expr    #SliceExprBinOp
-    | operand1=expr operator=('*' | '/') operand2=expr    #SliceExprBinOp
-    | operand1=expr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++') operand2=expr  #SliceExprBinOp
+    | operand1=sliceExpr operator='^' operand2=sliceExpr            #SliceExprBinOp
+    | operand1=sliceExpr operator=('*' | '/') operand2=sliceExpr    #SliceExprBinOp
+    | operand1=sliceExpr operator=('-' | '+') operand2=sliceExpr    #SliceExprBinOp
+
+    | operand1=sliceExpr operator=('>>' | '<<' |  'QUOT' | 'REM' | 'DIV' | 'MOD' | 'OR' | 'EOR' | 'AND' | '++') operand2=sliceExpr  #SliceExprBinOp
         | 'if' test=expr 'then' thenExpr=expr
           exprElsIf*
           'else' elseExpr=expr                            #SliceExprIf

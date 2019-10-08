@@ -748,7 +748,7 @@ public class ParseTreeToSExp extends ASLBaseVisitor<SExp> {
 
     @Override
     public SExp visitSliceExprUnOp(ASLParser.SliceExprUnOpContext ctx) {
-        return sexp("ExprUnOp", atomq(ctx.operator.getText()), sub(ctx.expr()));
+        return sexp("ExprUnOp", atomq(ctx.operator.getText()), sub(ctx.operand));
     }
 
     @Override
