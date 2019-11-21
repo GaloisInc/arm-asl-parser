@@ -111,6 +111,7 @@ data Type =
   | TypeOf    Expr
   | TypeReg   Integer [RegField]
   | TypeArray Type IndexType
+  | TypeTuple [Type]
   deriving(Show, Eq)
 
 data IndexType =
