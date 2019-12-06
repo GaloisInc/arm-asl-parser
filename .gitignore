@@ -1,2 +1,7 @@
-dist-newstyle
+cabal.project.local
+/dist-newstyle
 .ghc.environment.*
+*.asl
+*.parsed
+.gradle/
+/dist
