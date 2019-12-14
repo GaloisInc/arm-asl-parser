@@ -60,7 +60,7 @@ data Instruction =
   deriving(Show, Eq)
 
 data InstructionSet = A32 | T32 | T16 | A64
-  deriving(Show, Eq)
+  deriving(Show, Eq, Ord)
 
 data InstructionEncoding =
   InstructionEncoding { encName          :: Text
