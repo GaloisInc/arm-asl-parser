@@ -6,49 +6,25 @@ The ASL is extracted from the official XML specifications from ARM [fn:arm-specs
 
 * Use
 
+To download, extract, and parse the ASL specification, simply run:
+
 #+BEGIN_SRC sh
 
-# First, extract the ASL from the XML specifications using mra_tools
-git clone git@github.com:alastairreid/mra_tools.git
-pushd mra_tools
-mkdir v8.5
-pushd v8.5
-wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/ARMv85A-SysReg-00bet9.tar.gz
-wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/A64_v85A_ISA_xml_00bet9.tar.gz
-wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/AArch32_v85A_ISA_xml_00bet9.tar.gz
+make all
 
-tar xf A64_v85A_ISA_xml_00bet9.tar.gz
-tar xf AArch32_v85A_ISA_xml_00bet9.tar.gz
-tar xf ARMv85A-SysReg-00bet9.tar.gz
+#+END_SRC sh
 
-tar xf ISA_v85A_A64_xml_00bet9.tar.gz
-tar xf ISA_v85A_AArch32_xml_00bet9.tar.gz
-popd
+This performs the following steps:
 
-make all VERSION=00bet9
-
-DEFS=`pwd`/arch.asl
-INST=`pwd`/arch_instrs.asl
-REGS=`pdf`/regs.asl
-
-popd
-
-# Clone this repository and use the ANTLR parser to turn ASL into s-expressions
-git clone git@github.com:GaloisInc/arm-asl-parser.git
-
-pushd arm-asl-parser
-pushd asl-parser-java
-./gradlew run -q --args="defs $DEFS" > ../arch_defs.sexpr
-./gradlew run -q --args="inst $INST" > ../arch_instrs.sexpr
-./gradlew run -q --args="regs $REGS" > ../arch_regs.sexpr
-popd
-popd
-
-#+END_SRC
+1. Downloads and extracts the XML specifications from ARM into the ~xml~ subdirectory.
+2. Uses mra_tools to parse the XML specifications into ASL. This creates ~arch.asl~, ~arch_instrs.asl~, ~regs.asl~ and ~support.asl~ in the ~asl~ subdirectory.
+3. Uses the ANTLR parser to parse these into an s-expression format. This creates ~arm_defs.sexpr~, ~arm_instrs.sexpr~, ~arm_regs.sexpr~ and ~support.expr~ in the ~asl-parsed~ subdirectory.
 
 * Building
 
-Currently, this repository only implements a library parsing the generated s-expression files.  Client code can use the library to process ASL.  See the module ~Language.ASL.Parser~ and the functions ~parseAslDefs~, ~parseAslInsts~ and ~parseAslRegs~.  The mra_tools produce three files of interest: ~arch.asl~, ~arch_instrs.asl~ and ~regs.asl~.  The first contains definitions of functions used to implement instruction semantics.  The second contains the definitions of the semantics of each instruction in the architecture. The third contains definitions for the registers used in other two.
+Currently, this repository only implements a library parsing the generated s-expression files.  Client code can use the library to process ASL.  See the module ~Language.ASL.Parser~ and the functions ~parseAslDefs~, ~parseAslInsts~ and ~parseAslRegs~.  The mra_tools produce three files of interest: ~arch.asl~, ~arch_instrs.asl~ and ~regs.asl~.  The first contains definitions of functions used to implement instruction semantics.  The second contains the definitions of the semantics of each instruction in the architecture. The third contains definitions for the registers used in other two. Additionally mra_tools provides a collection of reference implementations for implementation-defined functions in the ASL specification. These are concatenated together in ~support.asl~.
+
+The cabal target `asl-parser` builds the parser library.
 
 #+BEGIN_SRC sh
 cabal v2-build asl-parser
