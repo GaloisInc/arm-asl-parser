@@ -29,6 +29,8 @@ ${ASLDIR}:
 ${PARSEDIR}:
 	mkdir -p ${PARSEDIR}
 
+.PRECIOUS: ${XMLDIR}/%.tar.gz
+
 ${XMLDIR}/%.tar.gz: | ${XMLDIR}
 	cd ${XMLDIR} && \
 	wget https://developer.arm.com/-/media/developer/products/architecture/armv8-a-architecture/$(@F)
@@ -46,30 +48,33 @@ ${SYSREG}: ${SYSREG_TAR}
 	cd ${XMLDIR} && \
 	tar zxf $(<F)
 
-${ASLDIR}/arch.asl ${ASLDIR}/arch_instrs.asl: ${A64} ${A32} | ${ASLDIR}
+${ASLDIR}/arm_defs.asl ${ASLDIR}/arm_instrs.asl: ${A64} ${A32} ${MRA_TOOLS} | ${ASLDIR}
 	cd ${ASLDIR} && \
-	${MRA_TOOLS}/bin/instrs2asl.py --demangle --verbose $(abspath $^) && \
-	sed -i -e 's/type1 PARTIDtype/type PARTIDtype/;s/type1 PMGtype/type PMGtype/;s/type1 MPAMinfo/type MPAMinfo/' $(abspath $@)
+	${MRA_TOOLS}/bin/instrs2asl.py --demangle --verbose $(abspath ${A64} ${A32}) && \
+	sed -i -e 's/type1 PARTIDtype/type PARTIDtype/;s/type1 PMGtype/type PMGtype/;s/type1 MPAMinfo/type MPAMinfo/' arch.asl arch_instrs.asl && \
+	mv arch.asl arm_defs.asl && \
+	mv arch_instrs.asl arm_instrs.asl
 
-${ASLDIR}/support.asl:
+
+${ASLDIR}/support.asl: ${MRA_TOOLS}
 	cat ${MRA_TOOLS}/support/*.asl > $@
 
-${ASLDIR}/regs.asl: ${SYSREG}
+${ASLDIR}/arm_regs.asl: ${SYSREG} ${MRA_TOOLS}
 	${MRA_TOOLS}/bin/reg2asl.py $< -o $@
 
 define PARSETARGET
-${PARSEDIR}/$(1).sexpr: ${ASLDIR}/$(2).asl | ${PARSEDIR}
+${PARSEDIR}/$(1).sexpr: ${ASLDIR}/$(1).asl | ${PARSEDIR}
 	cd ${ASL_PARSER} && \
-	./gradlew -q run --args="$(3) $$(abspath $$<)" > $$(abspath $$@) && \
+	./gradlew -q run --args="$(2) $$(abspath $$<)" > $$(abspath $$@) && \
 	[[ -s $$(abspath $$@) ]] || (rm -f $$(abspath $$@) && exit 1)
 
 ASL_PARSED += ${PARSEDIR}/$(1).sexpr
 endef
 
-$(eval $(call PARSETARGET,arm_defs,arch,defs))
-$(eval $(call PARSETARGET,arm_instrs,arch_instrs,inst))
-$(eval $(call PARSETARGET,arm_regs,regs,regs))
-$(eval $(call PARSETARGET,support,support,defs))
+$(eval $(call PARSETARGET,arm_defs,defs))
+$(eval $(call PARSETARGET,arm_instrs,inst))
+$(eval $(call PARSETARGET,arm_regs,regs))
+$(eval $(call PARSETARGET,support,defs))
 
 all: ${ASL_PARSED}
 
