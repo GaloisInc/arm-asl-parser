@@ -20,6 +20,8 @@ A64 = ${XMLDIR}/ISA_v85A_A64_xml_${VERSION}
 A32 = ${XMLDIR}/ISA_v85A_AArch32_xml_${VERSION}
 SYSREG = ${XMLDIR}/SysReg_v85A_xml-${VERSION}
 
+.PRECIOUS: ${ASLDIR}/%.asl ${PARSEDIR}/%.sexpr
+
 ${XMLDIR}:
 	mkdir -p ${XMLDIR}
 
