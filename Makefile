@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY: default clean realclean
 default: all
 
